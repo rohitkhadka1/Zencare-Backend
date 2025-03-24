@@ -8,6 +8,17 @@ from .serializers import UserRegistrationSerializer, UserLoginSerializer
 
 # Create your views here.
 
+class HomeView(APIView):
+    def get(self, request):
+        return Response({
+            'message': 'Welcome to Zencare API',
+            'endpoints': {
+                'register': '/auth/register/',
+                'login': '/auth/login/',
+                'admin': '/admin/'
+            }
+        })
+
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
 
