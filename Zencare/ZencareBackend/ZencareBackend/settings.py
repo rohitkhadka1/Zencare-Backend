@@ -30,7 +30,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-ez_h*1!+(&cq9we#sp3g83h)!_co760ubywi(m)kb!a(oq*1er')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Update ALLOWED_HOSTS to include Render domain and localhost
 ALLOWED_HOSTS = [
@@ -94,9 +94,12 @@ WSGI_APPLICATION = 'ZencareBackend.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:///db.sqlite3',
-        conn_max_age=600
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    } if DEBUG else dj_database_url.config(
+        conn_max_age=600,
+        conn_health_checks=True,
     )
 }
 
