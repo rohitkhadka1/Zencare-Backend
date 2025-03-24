@@ -1,1 +1,1 @@
-web: gunicorn ZencareBackend.wsgi:application 
+web: gunicorn ZencareBackend.wsgi:application --log-file - 
