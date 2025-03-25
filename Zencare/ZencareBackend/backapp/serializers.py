@@ -7,6 +7,11 @@ User = get_user_model()
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True)
+    username = serializers.CharField(required=False)
+    user_type = serializers.ChoiceField(choices=User.USER_TYPE_CHOICES, default='patient')
+    phone_number = serializers.CharField(required=False, allow_blank=True)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
+    address = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
@@ -18,6 +23,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        if 'username' not in validated_data:
+            validated_data['username'] = validated_data['email']
+        
         validated_data.pop('password2')
         user = User.objects.create_user(**validated_data)
         return user
