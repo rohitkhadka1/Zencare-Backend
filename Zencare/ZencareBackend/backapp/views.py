@@ -27,7 +27,12 @@ class HomeView(APIView):
                 'register': '/auth/register/',
                 'login': '/auth/login/',
                 'doctors': '/doctors/',
-                'token_refresh': '/auth/token/refresh/'
+                'token_refresh': '/auth/token/refresh/',
+                'appointments': {
+                    'list': '/appointment/',
+                    'create': '/appointment/create/',
+                    'detail': '/appointment/<id>/'
+                }
             }
         })
 
