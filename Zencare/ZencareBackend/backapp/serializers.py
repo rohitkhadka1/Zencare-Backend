@@ -12,7 +12,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         validators=[validate_password]
     )
     password2 = serializers.CharField(write_only=True, required=True)
-    username = serializers.CharField(required=False)
     first_name = serializers.CharField(required=True)
     last_name = serializers.CharField(required=True)
     user_type = serializers.ChoiceField(choices=User.USER_TYPE_CHOICES, default='patient')
@@ -23,7 +22,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('email', 'username', 'password', 'password2', 'first_name', 'last_name', 
+        fields = ('email', 'password', 'password2', 'first_name', 'last_name', 
                  'user_type', 'profession', 'phone_number', 'date_of_birth', 'address')
 
     def validate(self, attrs):
@@ -63,6 +62,11 @@ class UserLoginSerializer(serializers.Serializer):
         raise serializers.ValidationError("Must include 'email' and 'password'.")
 
 class DoctorListSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'profession', 'phone_number', 'address')
+        fields = ('id', 'email', 'full_name', 'profession', 'phone_number', 'address')
+    
+    def get_full_name(self, obj):
+        return obj.get_full_name()

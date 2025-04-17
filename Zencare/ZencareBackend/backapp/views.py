@@ -2,13 +2,14 @@ from django.shortcuts import render
 from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserRegistrationSerializer, UserLoginSerializer, DoctorListSerializer
 import logging
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.core.exceptions import ValidationError
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,6 @@ class HomeView(APIView):
             'endpoints': {
                 'register': '/auth/register/',
                 'login': '/auth/login/',
-                'admin': '/admin/',
                 'doctors': '/doctors/',
                 'token_refresh': '/auth/token/refresh/'
             }
@@ -89,9 +89,19 @@ class UserLoginView(APIView):
 class DoctorListView(generics.ListAPIView):
     serializer_class = DoctorListSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ['first_name', 'last_name', 'profession', 'address']
+    ordering_fields = ['first_name', 'last_name', 'profession']
 
     def get_queryset(self):
-        return User.objects.filter(user_type='doctor', is_active=True)
+        queryset = User.objects.filter(user_type='doctor', is_active=True)
+        
+        # Filter by profession if provided
+        profession = self.request.query_params.get('profession', None)
+        if profession:
+            queryset = queryset.filter(profession=profession)
+            
+        return queryset
 
 class CustomTokenRefreshView(TokenRefreshView):
     permission_classes = [AllowAny]
