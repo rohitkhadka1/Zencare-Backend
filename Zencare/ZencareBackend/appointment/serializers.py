@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Appointment
+from .models import Appointment, MedicalReport
 from django.utils import timezone
 from datetime import datetime, time
 
@@ -70,5 +70,59 @@ class AppointmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"appointment_time": "This time slot is already booked for the selected doctor"}
             )
+        
+        return data
+
+class MedicalReportSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.SerializerMethodField()
+    patient_name = serializers.SerializerMethodField()
+    lab_technician_name = serializers.SerializerMethodField()
+    report_type_display = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = MedicalReport
+        fields = (
+            'id', 'appointment', 'patient', 'doctor', 'lab_technician',
+            'doctor_name', 'patient_name', 'lab_technician_name',
+            'report_type', 'report_type_display', 'report_file',
+            'description', 'notes', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('created_at', 'updated_at', 'doctor_name', 
+                           'patient_name', 'lab_technician_name', 
+                           'report_type_display')
+    
+    def get_doctor_name(self, obj):
+        return f"Dr. {obj.doctor.get_full_name()}"
+    
+    def get_patient_name(self, obj):
+        return obj.patient.get_full_name()
+    
+    def get_lab_technician_name(self, obj):
+        return obj.lab_technician.get_full_name()
+    
+    def get_report_type_display(self, obj):
+        return obj.get_report_type_display()
+    
+    def validate(self, data):
+        # Ensure the lab technician is actually a lab technician
+        if self.context['request'].user.user_type != 'lab_technician':
+            raise serializers.ValidationError("Only lab technicians can upload medical reports")
+        
+        # Ensure appointment exists and is completed
+        if data['appointment'].status != 'completed':
+            raise serializers.ValidationError({
+                "appointment": "Reports can only be uploaded for completed appointments"
+            })
+        
+        # Ensure patient and doctor match the appointment
+        if data['patient'] != data['appointment'].patient:
+            raise serializers.ValidationError({
+                "patient": "Patient does not match the appointment"
+            })
+        
+        if data['doctor'] != data['appointment'].doctor:
+            raise serializers.ValidationError({
+                "doctor": "Doctor does not match the appointment"
+            })
         
         return data 

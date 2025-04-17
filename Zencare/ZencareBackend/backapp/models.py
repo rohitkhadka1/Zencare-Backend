@@ -32,6 +32,7 @@ class User(AbstractUser):
     USER_TYPE_CHOICES = (
         ('patient', 'Patient'),
         ('doctor', 'Doctor'),
+        ('lab_technician', 'Lab Technician'),
     )
 
     PROFESSION_CHOICES = (
@@ -46,7 +47,7 @@ class User(AbstractUser):
 
     username = None  # Remove username field
     email = models.EmailField(_('email address'), unique=True)
-    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='patient')
+    user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='patient')
     profession = models.CharField(max_length=20, choices=PROFESSION_CHOICES, blank=True, null=True)
     phone_number = models.CharField(max_length=15, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
@@ -78,6 +79,9 @@ class User(AbstractUser):
         elif self.user_type == 'patient':
             patient_group, _ = Group.objects.get_or_create(name='Patients')
             self.groups.add(patient_group)
+        elif self.user_type == 'lab_technician':
+            lab_tech_group, _ = Group.objects.get_or_create(name='Lab Technicians')
+            self.groups.add(lab_tech_group)
 
     class Meta:
         verbose_name = _('user')

@@ -2,6 +2,8 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from appointment.models import Appointment
+from appointment.serializers import AppointmentSerializer
 
 User = get_user_model()
 
@@ -70,3 +72,39 @@ class DoctorListSerializer(serializers.ModelSerializer):
     
     def get_full_name(self, obj):
         return obj.get_full_name()
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    user_type_display = serializers.SerializerMethodField()
+    profession_display = serializers.SerializerMethodField()
+    appointments = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = (
+            'id', 'email', 'full_name', 'user_type', 'user_type_display',
+            'profession', 'profession_display', 'phone_number', 
+            'date_of_birth', 'address', 'is_verified', 'appointments'
+        )
+    
+    def get_full_name(self, obj):
+        return obj.get_full_name()
+    
+    def get_user_type_display(self, obj):
+        return dict(User.USER_TYPE_CHOICES).get(obj.user_type)
+    
+    def get_profession_display(self, obj):
+        if obj.profession:
+            return dict(User.PROFESSION_CHOICES).get(obj.profession)
+        return None
+    
+    def get_appointments(self, obj):
+        # Only include appointments for patients and doctors
+        if obj.user_type == 'patient':
+            appointments = Appointment.objects.filter(patient=obj)
+        elif obj.user_type == 'doctor':
+            appointments = Appointment.objects.filter(doctor=obj)
+        else:
+            return []
+        
+        return AppointmentSerializer(appointments, many=True).data

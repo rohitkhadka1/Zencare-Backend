@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.core.validators import FileExtensionValidator
 
 User = get_user_model()
 
@@ -57,3 +58,37 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"Appointment with Dr. {self.doctor.get_full_name()} on {self.appointment_date} at {self.appointment_time}"
+
+class MedicalReport(models.Model):
+    REPORT_TYPE_CHOICES = (
+        ('blood_test', 'Blood Test'),
+        ('urine_test', 'Urine Test'),
+        ('x_ray', 'X-Ray'),
+        ('mri', 'MRI Scan'),
+        ('ct_scan', 'CT Scan'),
+        ('ultrasound', 'Ultrasound'),
+        ('ecg', 'ECG'),
+        ('other', 'Other'),
+    )
+
+    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='medical_reports')
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='patient_reports')
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='doctor_reports')
+    lab_technician = models.ForeignKey(User, on_delete=models.CASCADE, related_name='technician_reports')
+    
+    report_type = models.CharField(max_length=20, choices=REPORT_TYPE_CHOICES)
+    report_file = models.FileField(
+        upload_to='reports/%Y/%m/%d/',
+        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
+    )
+    description = models.TextField(help_text="Description of the report")
+    notes = models.TextField(blank=True, help_text="Additional notes")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_report_type_display()} for {self.patient.get_full_name()} - {self.created_at.strftime('%Y-%m-%d')}"
