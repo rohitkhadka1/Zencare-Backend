@@ -21,11 +21,20 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(required=False, allow_blank=True)
     date_of_birth = serializers.DateField(required=False, allow_null=True)
     address = serializers.CharField(required=False, allow_blank=True)
+    
+    # Doctor specific fields
+    experience_years = serializers.IntegerField(required=False, allow_null=True)
+    work_experience = serializers.CharField(required=False, allow_blank=True)
+    education = serializers.CharField(required=False, allow_blank=True)
+    training = serializers.CharField(required=False, allow_blank=True)
+    consultation_fee = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
 
     class Meta:
         model = User
         fields = ('email', 'password', 'password2', 'first_name', 'last_name', 
-                 'user_type', 'profession', 'phone_number', 'date_of_birth', 'address')
+                 'user_type', 'profession', 'phone_number', 'date_of_birth', 'address',
+                 'experience_years', 'work_experience', 'education', 'training', 
+                 'consultation_fee')
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -65,13 +74,21 @@ class UserLoginSerializer(serializers.Serializer):
 
 class DoctorListSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
+    profession_display = serializers.SerializerMethodField()
     
     class Meta:
         model = User
-        fields = ('id', 'email', 'full_name', 'profession', 'phone_number', 'address')
+        fields = ('id', 'email', 'full_name', 'profession', 'profession_display', 
+                 'phone_number', 'address', 'experience_years', 'work_experience', 
+                 'education', 'training', 'consultation_fee')
     
     def get_full_name(self, obj):
         return obj.get_full_name()
+        
+    def get_profession_display(self, obj):
+        if obj.profession:
+            return dict(User.PROFESSION_CHOICES).get(obj.profession)
+        return None
 
 class UserProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
@@ -84,7 +101,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'email', 'full_name', 'user_type', 'user_type_display',
             'profession', 'profession_display', 'phone_number', 
-            'date_of_birth', 'address', 'is_verified', 'appointments'
+            'date_of_birth', 'address', 'is_verified', 'appointments',
+            'experience_years', 'work_experience', 'education', 'training', 
+            'consultation_fee'
         )
     
     def get_full_name(self, obj):

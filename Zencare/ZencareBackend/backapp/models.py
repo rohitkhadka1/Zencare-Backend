@@ -53,6 +53,14 @@ class User(AbstractUser):
     date_of_birth = models.DateField(null=True, blank=True)
     address = models.TextField(blank=True)
     is_verified = models.BooleanField(default=False)
+    
+    # Doctor specific fields
+    experience_years = models.PositiveIntegerField(null=True, blank=True, help_text="Years of experience for doctors")
+    work_experience = models.TextField(blank=True, help_text="Previous work places and experience details")
+    education = models.TextField(blank=True, help_text="Education background and qualifications")
+    training = models.TextField(blank=True, help_text="Additional training and certifications")
+    consultation_fee = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Consultation fee in USD")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
