@@ -35,16 +35,16 @@ class Appointment(models.Model):
     appointment_time = models.TimeField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     
-    # Patient details for this appointment
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
-    blood_group = models.CharField(max_length=3, choices=BLOOD_GROUP_CHOICES)
-    height = models.DecimalField(max_digits=5, decimal_places=2, help_text="Height in cm")
-    weight = models.DecimalField(max_digits=5, decimal_places=2, help_text="Weight in kg")
-    emergency_contact_name = models.CharField(max_length=100)
-    emergency_contact_phone = models.CharField(max_length=15)
+    # Patient details for this appointment - making some optional
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True, null=True)
+    blood_group = models.CharField(max_length=3, choices=BLOOD_GROUP_CHOICES, blank=True, null=True)
+    height = models.DecimalField(max_digits=5, decimal_places=2, help_text="Height in cm", blank=True, null=True)
+    weight = models.DecimalField(max_digits=5, decimal_places=2, help_text="Weight in kg", blank=True, null=True)
+    emergency_contact_name = models.CharField(max_length=100, blank=True, null=True)
+    emergency_contact_phone = models.CharField(max_length=15, blank=True, null=True)
     
     # Medical information
-    symptoms = models.TextField(help_text="Current symptoms or reason for appointment")
+    symptoms = models.TextField(help_text="Current symptoms or reason for appointment", blank=True)
     medical_history = models.TextField(blank=True, help_text="Any previous medical conditions or allergies")
     current_medications = models.TextField(blank=True, help_text="Current medications being taken")
     insurance_provider = models.CharField(max_length=100, blank=True)

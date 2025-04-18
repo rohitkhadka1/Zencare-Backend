@@ -25,6 +25,16 @@ class AppointmentSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('patient', 'created_at', 'updated_at', 'doctor_name', 
                            'patient_name', 'doctor_profession', 'status_display')
+        extra_kwargs = {
+            # Only appointment date, time and doctor are strictly required
+            'gender': {'required': False},
+            'blood_group': {'required': False},
+            'height': {'required': False},
+            'weight': {'required': False},
+            'emergency_contact_name': {'required': False},
+            'emergency_contact_phone': {'required': False},
+            'symptoms': {'required': False},
+        }
 
     def get_doctor_name(self, obj):
         return f"Dr. {obj.doctor.get_full_name()}"
@@ -40,36 +50,38 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         # Check if the selected doctor is actually a doctor
-        if data['doctor'].user_type != 'doctor':
+        if 'doctor' in data and data['doctor'].user_type != 'doctor':
             raise serializers.ValidationError({"doctor": "Selected user is not a doctor"})
         
         # Check if the appointment time is in the future
-        appointment_datetime = timezone.datetime.combine(
-            data['appointment_date'], 
-            data['appointment_time'],
-            tzinfo=timezone.get_current_timezone()
-        )
-        if appointment_datetime <= timezone.now():
-            raise serializers.ValidationError({"appointment_time": "Appointment time must be in the future"})
-        
-        # Check if appointment time is during business hours (9 AM to 5 PM)
-        appointment_time = data['appointment_time']
-        if appointment_time < time(9, 0) or appointment_time > time(17, 0):
-            raise serializers.ValidationError(
-                {"appointment_time": "Appointments must be scheduled between 9 AM and 5 PM"}
+        if 'appointment_date' in data and 'appointment_time' in data:
+            appointment_datetime = timezone.datetime.combine(
+                data['appointment_date'], 
+                data['appointment_time'],
+                tzinfo=timezone.get_current_timezone()
             )
+            if appointment_datetime <= timezone.now():
+                raise serializers.ValidationError({"appointment_time": "Appointment time must be in the future"})
+            
+            # Check if appointment time is during business hours (9 AM to 5 PM)
+            appointment_time = data['appointment_time']
+            if appointment_time < time(9, 0) or appointment_time > time(17, 0):
+                raise serializers.ValidationError(
+                    {"appointment_time": "Appointments must be scheduled between 9 AM and 5 PM"}
+                )
         
         # Check if the doctor already has an appointment at this time
-        existing_appointment = Appointment.objects.filter(
-            doctor=data['doctor'],
-            appointment_date=data['appointment_date'],
-            appointment_time=data['appointment_time']
-        ).exists()
-        
-        if existing_appointment:
-            raise serializers.ValidationError(
-                {"appointment_time": "This time slot is already booked for the selected doctor"}
-            )
+        if 'doctor' in data and 'appointment_date' in data and 'appointment_time' in data:
+            existing_appointment = Appointment.objects.filter(
+                doctor=data['doctor'],
+                appointment_date=data['appointment_date'],
+                appointment_time=data['appointment_time']
+            ).exists()
+            
+            if existing_appointment:
+                raise serializers.ValidationError(
+                    {"appointment_time": "This time slot is already booked for the selected doctor"}
+                )
         
         return data
 
