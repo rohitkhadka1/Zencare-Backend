@@ -18,13 +18,45 @@ class AppointmentCreateView(generics.CreateAPIView):
     serializer_class = AppointmentSerializer
     permission_classes = [IsAuthenticated]
 
+    def create(self, request, *args, **kwargs):
+        # Map frontend field names to backend field names
+        mapped_data = {}
+        
+        # Check if frontend is sending data in its format
+        if 'doctorId' in request.data or 'date' in request.data or 'time' in request.data:
+            # This is frontend format - map the fields
+            mapped_data['doctor'] = request.data.get('doctorId')
+            mapped_data['appointment_date'] = request.data.get('date')
+            
+            # Convert time format (HH:MM to HH:MM:SS)
+            time = request.data.get('time')
+            if time and ':' in time and len(time.split(':')) == 2:
+                mapped_data['appointment_time'] = f"{time}:00"
+            else:
+                mapped_data['appointment_time'] = time
+                
+            # Map symptoms field
+            if 'description' in request.data:
+                mapped_data['symptoms'] = request.data.get('description')
+                
+            # Use the mapped data
+            serializer = self.get_serializer(data=mapped_data)
+        else:
+            # This is direct backend format
+            serializer = self.get_serializer(data=request.data)
+            
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     def perform_create(self, serializer):
         # Ensure only patients can create appointments
         if self.request.user.user_type != 'patient':
             raise PermissionDenied("Only patients can create appointments")
         
         # Validate doctor exists and is active
-        doctor_id = self.request.data.get('doctor')
+        doctor_id = serializer.validated_data.get('doctor')
         try:
             doctor = User.objects.get(id=doctor_id, user_type='doctor', is_active=True)
         except User.DoesNotExist:
