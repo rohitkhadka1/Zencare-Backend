@@ -31,10 +31,11 @@ class AppointmentCreateView(generics.CreateAPIView):
             mapped_data['doctor'] = request.data.get('doctorId')
             mapped_data['appointment_date'] = request.data.get('date')
             
-            # Convert time format (HH:MM to HH:MM:SS)
+            # Handle time format without requiring seconds
             time = request.data.get('time')
-            if time and ':' in time and len(time.split(':')) == 2:
-                mapped_data['appointment_time'] = f"{time}:00"
+            if time and ':' in time:
+                # Don't add seconds - Django will handle this format
+                mapped_data['appointment_time'] = time
             else:
                 mapped_data['appointment_time'] = time
                 
@@ -46,6 +47,8 @@ class AppointmentCreateView(generics.CreateAPIView):
             # Format 2: Direct field names format from api.js
             mapped_data['doctor'] = request.data.get('doctor')
             mapped_data['appointment_date'] = request.data.get('appointment_date')
+            
+            # Use time as-is without modifying format
             mapped_data['appointment_time'] = request.data.get('appointment_time')
             
             # Map symptoms from description if present

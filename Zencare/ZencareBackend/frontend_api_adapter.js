@@ -79,7 +79,7 @@ export const book = async (appointmentData) => {
     const formattedData = {
       doctor: parseInt(appointmentData.doctorId), // Ensure doctor ID is an integer
       appointment_date: appointmentData.date,     // Should be in YYYY-MM-DD format
-      appointment_time: appointmentData.time,     // Should add :00 seconds if needed
+      appointment_time: appointmentData.time,     // Use time as-is (HH:MM format)
       symptoms: appointmentData.description || "" // Map description to symptoms
     };
     
