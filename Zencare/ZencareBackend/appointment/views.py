@@ -19,12 +19,15 @@ class AppointmentCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
+        # Debug log to see what data is coming in
+        print(f"Received data: {request.data}")
+        
         # Map frontend field names to backend field names
         mapped_data = {}
         
-        # Check if frontend is sending data in its format
-        if 'doctorId' in request.data or 'date' in request.data or 'time' in request.data:
-            # This is frontend format - map the fields
+        # Check for different frontend formats
+        if 'doctorId' in request.data:
+            # Format 1: The API adapter format
             mapped_data['doctor'] = request.data.get('doctorId')
             mapped_data['appointment_date'] = request.data.get('date')
             
@@ -38,17 +41,37 @@ class AppointmentCreateView(generics.CreateAPIView):
             # Map symptoms field
             if 'description' in request.data:
                 mapped_data['symptoms'] = request.data.get('description')
-                
-            # Use the mapped data
-            serializer = self.get_serializer(data=mapped_data)
-        else:
-            # This is direct backend format
-            serializer = self.get_serializer(data=request.data)
+        
+        elif 'doctor' in request.data:
+            # Format 2: Direct field names format from api.js
+            mapped_data['doctor'] = request.data.get('doctor')
+            mapped_data['appointment_date'] = request.data.get('appointment_date')
+            mapped_data['appointment_time'] = request.data.get('appointment_time')
             
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            # Map symptoms from description if present
+            if 'description' in request.data:
+                mapped_data['symptoms'] = request.data.get('description')
+        
+        else:
+            # Use request data as is
+            mapped_data = request.data
+            
+        print(f"Mapped data: {mapped_data}")
+        
+        # Use the mapped data
+        serializer = self.get_serializer(data=mapped_data)
+        
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+            print(f"Validation error: {serializer.errors if hasattr(serializer, 'errors') else str(e)}")
+            return Response(
+                {"error": serializer.errors if hasattr(serializer, 'errors') else str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     def perform_create(self, serializer):
         # Ensure only patients can create appointments
@@ -62,6 +85,7 @@ class AppointmentCreateView(generics.CreateAPIView):
         except User.DoesNotExist:
             raise PermissionDenied("Invalid or inactive doctor selected")
         
+        # Save the appointment with the patient as the current user
         serializer.save(patient=self.request.user, doctor=doctor)
 
 class AppointmentListView(generics.ListAPIView):

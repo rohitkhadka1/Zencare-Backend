@@ -22,7 +22,7 @@ const api = axios.create({
 // Set auth token for all requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token'); // Using the same key as in your api.js
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -43,7 +43,7 @@ export const login = async (email, password) => {
   try {
     const response = await api.post('/auth/login/', { email, password });
     if (response.data.access) {
-      localStorage.setItem('token', response.data.access);
+      localStorage.setItem('access_token', response.data.access); // Store with the same key
     }
     return response;
   } catch (error) {
@@ -73,17 +73,28 @@ export const register = async (userData) => {
  * @returns {Promise} - Promise with the appointment creation response
  */
 export const book = async (appointmentData) => {
+  const token = localStorage.getItem("access_token");
   try {
-    // Convert the frontend format to the backend format
-    const response = await api.post('/appointment/create/', {
-      doctorId: appointmentData.doctorId,
-      date: appointmentData.date,
-      time: appointmentData.time,
-      description: appointmentData.description
+    // Transform the data to match the expected field names in the backend
+    const formattedData = {
+      doctor: parseInt(appointmentData.doctorId), // Ensure doctor ID is an integer
+      appointment_date: appointmentData.date,     // Should be in YYYY-MM-DD format
+      appointment_time: appointmentData.time,     // Should add :00 seconds if needed
+      symptoms: appointmentData.description || "" // Map description to symptoms
+    };
+    
+    console.log("Sending to API:", formattedData);
+    
+    // Make POST request to backend with appointment data
+    const response = await axios.post(`${API_BASE_URL}/appointment/create/`, formattedData, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
     });
     return response;
   } catch (error) {
-    console.error('Appointment booking error:', error);
+    console.error("Error booking appointment:", error.response ? error.response.data : error.message);
     throw error;
   }
 };
