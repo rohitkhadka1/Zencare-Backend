@@ -50,8 +50,17 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         # Check if the selected doctor is actually a doctor
-        if 'doctor' in data and data['doctor'].user_type != 'doctor':
-            raise serializers.ValidationError({"doctor": "Selected user is not a doctor"})
+        if 'doctor' in data:
+            try:
+                # Get the doctor object by ID if an integer was passed
+                if isinstance(data['doctor'], int):
+                    doctor = User.objects.get(id=data['doctor'], user_type='doctor')
+                    # Replace the ID with the actual doctor object
+                    data['doctor'] = doctor
+                elif hasattr(data['doctor'], 'user_type') and data['doctor'].user_type != 'doctor':
+                    raise serializers.ValidationError({"doctor": "Selected user is not a doctor"})
+            except User.DoesNotExist:
+                raise serializers.ValidationError({"doctor": "Doctor with this ID does not exist"})
         
         # Check if the appointment time is in the future
         if 'appointment_date' in data and 'appointment_time' in data:
@@ -72,8 +81,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
         
         # Check if the doctor already has an appointment at this time
         if 'doctor' in data and 'appointment_date' in data and 'appointment_time' in data:
+            doctor_id = data['doctor'].id if hasattr(data['doctor'], 'id') else data['doctor']
             existing_appointment = Appointment.objects.filter(
-                doctor=data['doctor'],
+                doctor_id=doctor_id,
                 appointment_date=data['appointment_date'],
                 appointment_time=data['appointment_time']
             ).exists()

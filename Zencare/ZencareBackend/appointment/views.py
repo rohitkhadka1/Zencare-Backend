@@ -81,15 +81,9 @@ class AppointmentCreateView(generics.CreateAPIView):
         if self.request.user.user_type != 'patient':
             raise PermissionDenied("Only patients can create appointments")
         
-        # Validate doctor exists and is active
-        doctor_id = serializer.validated_data.get('doctor')
-        try:
-            doctor = User.objects.get(id=doctor_id, user_type='doctor', is_active=True)
-        except User.DoesNotExist:
-            raise PermissionDenied("Invalid or inactive doctor selected")
-        
-        # Save the appointment with the patient as the current user
-        serializer.save(patient=self.request.user, doctor=doctor)
+        # Doctor object has already been validated and processed in the serializer's validate method
+        # Just save the appointment with the patient as the current user
+        serializer.save(patient=self.request.user)
 
 class AppointmentListView(generics.ListAPIView):
     serializer_class = AppointmentSerializer
