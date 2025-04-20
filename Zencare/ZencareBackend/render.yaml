@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: zencare-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd Zencare/ZencareBackend && gunicorn ZencareBackend.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.1
+      - key: DATABASE_URL
+        fromDatabase:
+          name: zencare-db
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False 
