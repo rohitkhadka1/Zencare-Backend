@@ -16,14 +16,24 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.conf import settings
 from django.conf.urls.static import static
+from django.conf import settings
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from django.views.static import serve
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('backapp.urls')),
     path('appointment/', include('appointment.urls')),
-]
+] 
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve media files in all environments
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Serve static files - typically handled by WhiteNoise in production
+urlpatterns += staticfiles_urlpatterns()
+
+# Explicit static file serving as a fallback
+urlpatterns += [
+    path('static/<path:path>', serve, {'document_root': settings.STATIC_ROOT}),
+]
