@@ -48,12 +48,19 @@ class HomeView(APIView):
                 'appointments': {
                     'list': '/appointment/',
                     'create': '/appointment/create/',
-                    'detail': '/appointment/<id>/'
+                    'detail': '/appointment/<id>/',
+                    'pending': '/appointment/pending/'  # For doctors to see pending appointments
                 },
                 'reports': {
                     'list': '/appointment/reports/',
                     'create': '/appointment/reports/create/',
                     'detail': '/appointment/reports/<id>/'
+                },
+                'prescriptions': {
+                    'list': '/appointment/prescriptions/',
+                    'create': '/appointment/prescriptions/create/',
+                    'detail': '/appointment/prescriptions/<id>/',
+                    'lab_tests': '/appointment/lab-tests-required/'  # For lab technicians
                 }
             }
         })

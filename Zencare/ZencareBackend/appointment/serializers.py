@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Appointment, MedicalReport
+from .models import Appointment, MedicalReport, Prescription
 from django.utils import timezone
 from datetime import datetime, time
 
@@ -146,5 +146,98 @@ class MedicalReportSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 "doctor": "Doctor does not match the appointment"
             })
+        
+        return data 
+
+class PrescriptionSerializer(serializers.ModelSerializer):
+    doctor_name = serializers.SerializerMethodField()
+    patient_name = serializers.SerializerMethodField()
+    lab_technician_name = serializers.SerializerMethodField()
+    appointment_details = serializers.SerializerMethodField()
+    medical_reports = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Prescription
+        fields = (
+            'id', 'appointment', 'patient', 'doctor', 'doctor_name', 'patient_name',
+            'diagnosis', 'medication', 'instructions', 'lab_tests_required',
+            'lab_instructions', 'lab_technician', 'lab_technician_name',
+            'status', 'appointment_details', 'medical_reports', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('created_at', 'updated_at', 'doctor_name', 'patient_name', 
+                           'lab_technician_name', 'appointment_details', 'medical_reports')
+    
+    def get_doctor_name(self, obj):
+        return f"Dr. {obj.doctor.get_full_name()}"
+    
+    def get_patient_name(self, obj):
+        return obj.patient.get_full_name()
+    
+    def get_lab_technician_name(self, obj):
+        if obj.lab_technician:
+            return obj.lab_technician.get_full_name()
+        return None
+    
+    def get_appointment_details(self, obj):
+        return {
+            'date': obj.appointment.appointment_date,
+            'time': obj.appointment.appointment_time,
+            'status': obj.appointment.status
+        }
+    
+    def get_medical_reports(self, obj):
+        # Get related medical reports if any
+        reports = MedicalReport.objects.filter(appointment=obj.appointment)
+        if reports.exists():
+            return MedicalReportSerializer(reports, many=True).data
+        return []
+    
+    def validate(self, data):
+        # Ensure the doctor is actually a doctor
+        if self.context['request'].user.user_type != 'doctor' and not self.context['request'].user.is_staff:
+            raise serializers.ValidationError("Only doctors can create prescriptions")
+        
+        # Ensure the appointment exists and is completed or confirmed
+        if data['appointment'].status not in ['completed', 'confirmed']:
+            raise serializers.ValidationError({
+                "appointment": "Prescriptions can only be created for confirmed or completed appointments"
+            })
+        
+        # Ensure patient matches the appointment
+        if data['patient'] != data['appointment'].patient:
+            raise serializers.ValidationError({
+                "patient": "Patient does not match the appointment"
+            })
+        
+        # Ensure doctor matches the appointment
+        if data['doctor'] != data['appointment'].doctor:
+            raise serializers.ValidationError({
+                "doctor": "Doctor does not match the appointment"
+            })
+        
+        # If lab tests are required, ensure lab instructions are provided
+        if data.get('lab_tests_required', False) and not data.get('lab_instructions'):
+            raise serializers.ValidationError({
+                "lab_instructions": "Lab instructions are required when lab tests are requested"
+            })
+        
+        return data
+
+class PrescriptionUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for lab technicians to update prescriptions with lab results
+    """
+    class Meta:
+        model = Prescription
+        fields = ('lab_technician', 'status')
+    
+    def validate(self, data):
+        # Ensure the user is a lab technician
+        if self.context['request'].user.user_type != 'lab_technician' and not self.context['request'].user.is_staff:
+            raise serializers.ValidationError("Only lab technicians can update prescriptions with lab results")
+        
+        # Set the lab technician to the current user if not specified
+        if 'lab_technician' not in data:
+            data['lab_technician'] = self.context['request'].user
         
         return data 

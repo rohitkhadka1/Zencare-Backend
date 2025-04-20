@@ -2,8 +2,11 @@ from django.shortcuts import render
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Appointment, MedicalReport
-from .serializers import AppointmentSerializer, MedicalReportSerializer
+from .models import Appointment, MedicalReport, Prescription
+from .serializers import (
+    AppointmentSerializer, MedicalReportSerializer, 
+    PrescriptionSerializer, PrescriptionUpdateSerializer
+)
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied
@@ -223,3 +226,133 @@ class MedicalReportDetailView(generics.RetrieveUpdateDestroyAPIView):
             instance.delete()
         else:
             raise PermissionDenied("You don't have permission to delete this report")
+
+class PrescriptionCreateView(generics.CreateAPIView):
+    """
+    Create a new prescription (doctor only)
+    """
+    serializer_class = PrescriptionSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def perform_create(self, serializer):
+        # Only doctors can create prescriptions
+        if self.request.user.user_type != 'doctor':
+            raise PermissionDenied("Only doctors can create prescriptions")
+        
+        serializer.save(doctor=self.request.user)
+
+class PrescriptionListView(generics.ListAPIView):
+    """
+    List prescriptions based on user role:
+    - Doctors see prescriptions they created
+    - Patients see prescriptions prescribed to them
+    - Lab technicians see prescriptions with lab_tests_required=True
+    - Admins see all prescriptions
+    """
+    serializer_class = PrescriptionSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ['patient__first_name', 'patient__last_name', 'diagnosis', 'medication']
+    ordering_fields = ['created_at', 'updated_at', 'status']
+    
+    def get_queryset(self):
+        user = self.request.user
+        
+        if user.user_type == 'doctor':
+            return Prescription.objects.filter(doctor=user)
+        elif user.user_type == 'patient':
+            return Prescription.objects.filter(patient=user)
+        elif user.user_type == 'lab_technician':
+            # Lab technicians see all prescriptions that require lab tests
+            return Prescription.objects.filter(lab_tests_required=True)
+        elif user.is_superuser or user.is_staff:
+            return Prescription.objects.all()
+            
+        raise PermissionDenied("Invalid user type")
+
+class PrescriptionDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update or delete a prescription:
+    - Doctors can update diagnosis, medication, instructions
+    - Lab technicians can update lab-related fields
+    - Patients can only view
+    - Admins can do all operations
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        user = self.request.user
+        if user.user_type == 'lab_technician':
+            return PrescriptionUpdateSerializer
+        return PrescriptionSerializer
+    
+    def get_queryset(self):
+        user = self.request.user
+        
+        if user.user_type == 'doctor':
+            return Prescription.objects.filter(doctor=user)
+        elif user.user_type == 'patient':
+            return Prescription.objects.filter(patient=user)
+        elif user.user_type == 'lab_technician':
+            # Lab technicians see all prescriptions that require lab tests
+            return Prescription.objects.filter(lab_tests_required=True)
+        elif user.is_superuser or user.is_staff:
+            return Prescription.objects.all()
+            
+        raise PermissionDenied("Invalid user type")
+    
+    def perform_update(self, serializer):
+        user = self.request.user
+        
+        if user.is_superuser or user.is_staff:
+            serializer.save()
+            return
+            
+        if user.user_type == 'doctor' and self.get_object().doctor == user:
+            # Doctors can only update their own prescriptions
+            serializer.save()
+        elif user.user_type == 'lab_technician':
+            # Lab technicians can assign themselves and update status
+            serializer.save(lab_technician=user)
+        else:
+            raise PermissionDenied("You don't have permission to update this prescription")
+
+class PendingAppointmentsView(generics.ListAPIView):
+    """
+    View for doctors to see their pending appointments
+    """
+    serializer_class = AppointmentSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        
+        if user.user_type != 'doctor':
+            raise PermissionDenied("Only doctors can access pending appointments")
+            
+        # Return pending and confirmed appointments for this doctor
+        return Appointment.objects.filter(
+            doctor=user, 
+            status__in=['pending', 'confirmed']
+        ).order_by('appointment_date', 'appointment_time')
+
+class LabTestsRequiredView(generics.ListAPIView):
+    """
+    View for lab technicians to see prescriptions that require lab tests
+    """
+    serializer_class = PrescriptionSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        
+        if user.user_type != 'lab_technician':
+            raise PermissionDenied("Only lab technicians can access this view")
+            
+        # Return prescriptions that require lab tests and don't have a lab technician assigned
+        # or are assigned to this lab technician
+        return Prescription.objects.filter(
+            lab_tests_required=True
+        ).filter(
+            lab_technician__isnull=True
+        ).order_by('created_at')

@@ -92,3 +92,45 @@ class MedicalReport(models.Model):
 
     def __str__(self):
         return f"{self.get_report_type_display()} for {self.patient.get_full_name()} - {self.created_at.strftime('%Y-%m-%d')}"
+
+class Prescription(models.Model):
+    """
+    Prescription model to store doctor's instructions for patients and lab technicians.
+    This connects the doctor, patient, and appointment.
+    """
+    STATUS_CHOICES = (
+        ('pending', 'Pending Lab Tests'),
+        ('completed', 'Completed'),
+    )
+    
+    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='prescriptions')
+    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='patient_prescriptions')
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='doctor_prescriptions')
+    
+    # Doctor's prescription details
+    diagnosis = models.TextField(help_text="Doctor's diagnosis")
+    medication = models.TextField(help_text="Prescribed medications")
+    instructions = models.TextField(help_text="Instructions for the patient")
+    
+    # Lab test related fields
+    lab_tests_required = models.BooleanField(default=False, help_text="Whether lab tests are required")
+    lab_instructions = models.TextField(blank=True, help_text="Instructions for the lab technician")
+    lab_technician = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        related_name='lab_prescriptions',
+        null=True, 
+        blank=True,
+        help_text="Assigned lab technician"
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Prescription for {self.patient.get_full_name()} by Dr. {self.doctor.get_full_name()}"
