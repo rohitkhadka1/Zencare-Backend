@@ -239,25 +239,45 @@ class PrescriptionCreateView(generics.CreateAPIView):
         print("Request data:", request.data)
         
         # Create a copy of the data we can modify
-        data = request.data.copy()
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         
-        # If the frontend sends patient_id or doctor_id instead of patient/doctor objects,
-        # try to get the appropriate user object
-        if 'patient_id' in data and not 'patient' in data:
-            try:
-                patient_id = data.pop('patient_id')[0] if isinstance(data.get('patient_id'), list) else data.pop('patient_id')
-                data['patient'] = User.objects.get(id=patient_id).id
-                print(f"Found patient with ID {patient_id}")
-            except (User.DoesNotExist, ValueError) as e:
-                print(f"Error finding patient: {e}")
-                
-        if 'doctor_id' in data and not 'doctor' in data:
-            try:
-                doctor_id = data.pop('doctor_id')[0] if isinstance(data.get('doctor_id'), list) else data.pop('doctor_id')
-                data['doctor'] = User.objects.get(id=doctor_id).id
-                print(f"Found doctor with ID {doctor_id}")
-            except (User.DoesNotExist, ValueError) as e:
-                print(f"Error finding doctor: {e}")
+        # Map old field names to new ones if they exist
+        field_mapping = {
+            'diagnosis': 'symptoms',
+            'medication': 'appointment_time',
+            'instructions': 'appointment_date'
+        }
+        
+        for old_field, new_field in field_mapping.items():
+            if old_field in data and not new_field in data:
+                data[new_field] = data[old_field]
+        
+        # Handle ID fields
+        id_mapping = {
+            'doctor_id': 'doctor',
+            'patient_id': 'patient',
+            'appointment_id': 'appointment',
+            'lab_technician_id': 'lab_technician'
+        }
+        
+        # Process ID fields
+        for id_field, obj_field in id_mapping.items():
+            if id_field in data and not obj_field in data:
+                try:
+                    field_id = data.pop(id_field)
+                    if isinstance(field_id, list):
+                        field_id = field_id[0]
+                    if id_field == 'doctor_id' or id_field == 'patient_id' or id_field == 'lab_technician_id':
+                        data[obj_field] = User.objects.get(id=field_id).id
+                    elif id_field == 'appointment_id':
+                        data[obj_field] = Appointment.objects.get(id=field_id).id
+                    print(f"Mapped {id_field} to {obj_field} with ID {field_id}")
+                except Exception as e:
+                    print(f"Error mapping {id_field}: {str(e)}")
+                    # Don't fail - just log and continue
+                    pass
+        
+        print("Processed data:", data)
         
         # Process the request 
         serializer = self.get_serializer(data=data)

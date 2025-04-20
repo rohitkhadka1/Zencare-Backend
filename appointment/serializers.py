@@ -155,6 +155,11 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     lab_technician_name = serializers.SerializerMethodField()
     appointment_details = serializers.SerializerMethodField()
     medical_reports = serializers.SerializerMethodField()
+
+    # Adding old field names as serializer methods
+    diagnosis = serializers.CharField(required=False, write_only=True, allow_null=True, allow_blank=True)
+    medication = serializers.CharField(required=False, write_only=True, allow_null=True, allow_blank=True)
+    instructions = serializers.CharField(required=False, write_only=True, allow_null=True, allow_blank=True)
     
     class Meta:
         model = Prescription
@@ -162,10 +167,26 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             'id', 'appointment', 'patient', 'doctor', 'doctor_name', 'patient_name',
             'symptoms', 'appointment_time', 'appointment_date', 'prescription_text',
             'lab_tests_required', 'lab_instructions', 'lab_technician', 'lab_technician_name',
-            'status', 'appointment_details', 'medical_reports', 'created_at', 'updated_at'
+            'status', 'appointment_details', 'medical_reports', 'created_at', 'updated_at',
+            # Include the old field names
+            'diagnosis', 'medication', 'instructions'
         )
         read_only_fields = ('created_at', 'updated_at', 'doctor_name', 'patient_name', 
                            'lab_technician_name', 'appointment_details', 'medical_reports')
+        # Make all fields optional
+        extra_kwargs = {
+            'symptoms': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'appointment_time': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'appointment_date': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'prescription_text': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'lab_tests_required': {'required': False, 'allow_null': True},
+            'lab_instructions': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'lab_technician': {'required': False, 'allow_null': True},
+            'status': {'required': False, 'allow_null': True, 'allow_blank': True},
+            'appointment': {'required': False, 'allow_null': True},
+            'patient': {'required': False, 'allow_null': True},
+            'doctor': {'required': False, 'allow_null': True},
+        }
     
     def get_doctor_name(self, obj):
         if obj.doctor:
@@ -200,6 +221,16 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         return []
     
     def validate(self, data):
+        # Map old field names to new field names if provided
+        if 'diagnosis' in data:
+            data['symptoms'] = data.pop('diagnosis')
+            
+        if 'medication' in data:
+            data['appointment_time'] = data.pop('medication')
+            
+        if 'instructions' in data:
+            data['appointment_date'] = data.pop('instructions')
+            
         # All validations are now optional
         return data
 
