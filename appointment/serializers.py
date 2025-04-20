@@ -150,33 +150,12 @@ class MedicalReportSerializer(serializers.ModelSerializer):
         return data 
 
 class PrescriptionSerializer(serializers.ModelSerializer):
-    doctor_name = serializers.SerializerMethodField()
-    patient_name = serializers.SerializerMethodField()
-    lab_technician_name = serializers.SerializerMethodField()
-    appointment_details = serializers.SerializerMethodField()
-    medical_reports = serializers.SerializerMethodField()
-
-    # Explicitly declare all fields with required=False to override model constraints
-    doctor = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
-    patient = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
-    appointment = serializers.PrimaryKeyRelatedField(queryset=Appointment.objects.all(), required=False, allow_null=True)
-    lab_technician = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
+    # Legacy field support for backward compatibility
+    diagnosis = serializers.CharField(source='symptoms', required=False, allow_null=True, allow_blank=True, write_only=True)
+    medication = serializers.CharField(source='prescription_text', required=False, allow_null=True, allow_blank=True, write_only=True)
+    instructions = serializers.CharField(source='lab_instructions', required=False, allow_null=True, allow_blank=True, write_only=True)
     
-    # Fields that are part of the model but need to be explicitly declared as non-required
-    symptoms = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    appointment_time = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    appointment_date = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    prescription_text = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    lab_tests_required = serializers.BooleanField(required=False, allow_null=True)
-    lab_instructions = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    status = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-
-    # Adding old field names as explicit serializer fields
-    diagnosis = serializers.CharField(required=False, write_only=True, allow_null=True, allow_blank=True)
-    medication = serializers.CharField(required=False, write_only=True, allow_null=True, allow_blank=True)
-    instructions = serializers.CharField(required=False, write_only=True, allow_null=True, allow_blank=True)
-    
-    # Also accept ID fields directly
+    # ID fields for easy linking
     doctor_id = serializers.IntegerField(required=False, write_only=True, allow_null=True)
     patient_id = serializers.IntegerField(required=False, write_only=True, allow_null=True)
     appointment_id = serializers.IntegerField(required=False, write_only=True, allow_null=True)
@@ -184,88 +163,40 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Prescription
-        fields = (
-            'id', 'appointment', 'patient', 'doctor', 'doctor_name', 'patient_name',
-            'symptoms', 'appointment_time', 'appointment_date', 'prescription_text',
-            'lab_tests_required', 'lab_instructions', 'lab_technician', 'lab_technician_name',
-            'status', 'appointment_details', 'medical_reports', 'created_at', 'updated_at',
-            # Include the old field names
-            'diagnosis', 'medication', 'instructions',
-            # Include ID fields 
-            'doctor_id', 'patient_id', 'appointment_id', 'lab_technician_id'
-        )
-        read_only_fields = ('created_at', 'updated_at', 'doctor_name', 'patient_name', 
-                           'lab_technician_name', 'appointment_details', 'medical_reports')
-    
-    def get_doctor_name(self, obj):
-        if obj.doctor:
-            return f"Dr. {obj.doctor.get_full_name()}"
-        return None
-    
-    def get_patient_name(self, obj):
-        if obj.patient:
-            return obj.patient.get_full_name()
-        return None
-    
-    def get_lab_technician_name(self, obj):
-        if obj.lab_technician:
-            return obj.lab_technician.get_full_name()
-        return None
-    
-    def get_appointment_details(self, obj):
-        if obj.appointment:
-            return {
-                'date': obj.appointment.appointment_date,
-                'time': obj.appointment.appointment_time,
-                'status': obj.appointment.status
-            }
-        return None
-    
-    def get_medical_reports(self, obj):
-        # Get related medical reports if any
-        if obj.appointment:
-            reports = MedicalReport.objects.filter(appointment=obj.appointment)
-            if reports.exists():
-                return MedicalReportSerializer(reports, many=True).data
-        return []
+        fields = '__all__'
+        read_only_fields = ('created_at', 'updated_at')
+        extra_kwargs = {
+            field.name: {'required': False, 'allow_null': True}
+            for field in Prescription._meta.get_fields()
+            if field.name not in ('id', 'created_at', 'updated_at')
+        }
     
     def validate(self, data):
-        # Map old field names to new field names if provided
-        if 'diagnosis' in data:
-            data['symptoms'] = data.pop('diagnosis')
-            
-        if 'medication' in data:
-            data['appointment_time'] = data.pop('medication')
-            
-        if 'instructions' in data:
-            data['appointment_date'] = data.pop('instructions')
-            
         # Handle ID fields
-        if 'doctor_id' in data and not 'doctor' in data:
+        if 'doctor_id' in data and 'doctor' not in data:
             try:
                 data['doctor'] = User.objects.get(id=data.pop('doctor_id'))
             except Exception:
                 pass
                 
-        if 'patient_id' in data and not 'patient' in data:
+        if 'patient_id' in data and 'patient' not in data:
             try:
                 data['patient'] = User.objects.get(id=data.pop('patient_id'))
             except Exception:
                 pass
                 
-        if 'appointment_id' in data and not 'appointment' in data:
+        if 'appointment_id' in data and 'appointment' not in data:
             try:
                 data['appointment'] = Appointment.objects.get(id=data.pop('appointment_id'))
             except Exception:
                 pass
                 
-        if 'lab_technician_id' in data and not 'lab_technician' in data:
+        if 'lab_technician_id' in data and 'lab_technician' not in data:
             try:
                 data['lab_technician'] = User.objects.get(id=data.pop('lab_technician_id'))
             except Exception:
                 pass
         
-        # All validations are now optional
         return data
 
 class PrescriptionUpdateSerializer(serializers.ModelSerializer):
@@ -274,7 +205,13 @@ class PrescriptionUpdateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Prescription
-        fields = ('lab_technician', 'status')
+        fields = '__all__'
+        read_only_fields = ('created_at', 'updated_at')
+        extra_kwargs = {
+            field.name: {'required': False, 'allow_null': True}
+            for field in Prescription._meta.get_fields()
+            if field.name not in ('id', 'created_at', 'updated_at')
+        }
     
     def validate(self, data):
         # All validations are now optional

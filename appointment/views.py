@@ -229,7 +229,7 @@ class MedicalReportDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class PrescriptionCreateView(generics.CreateAPIView):
     """
-    Create a new prescription
+    Create a new prescription exactly matching the fields shown in the UI
     """
     serializer_class = PrescriptionSerializer
     permission_classes = [IsAuthenticated]
@@ -246,43 +246,82 @@ class PrescriptionCreateView(generics.CreateAPIView):
             if isinstance(data[key], list) and len(data[key]) > 0:
                 data[key] = data[key][0]
         
-        # Map old field names to new ones if they exist
+        # Legacy field mapping
         field_mapping = {
             'diagnosis': 'symptoms',
-            'medication': 'appointment_time',
-            'instructions': 'appointment_date'
+            'medication': 'prescription_text',
+            'instructions': 'lab_instructions'
         }
         
+        # Map legacy fields to new ones
         for old_field, new_field in field_mapping.items():
             if old_field in data and not new_field in data:
                 data[new_field] = data[old_field]
         
-        # Handle ID fields
-        id_mapping = {
-            'doctor_id': 'doctor',
-            'patient_id': 'patient',
-            'appointment_id': 'appointment',
-            'lab_technician_id': 'lab_technician'
-        }
-        
-        # Process ID fields
-        for id_field, obj_field in id_mapping.items():
-            if id_field in data and not obj_field in data:
+        # Extract IDs from the data
+        try:
+            # If we have doctorId (or doctor_id), fetch the doctor and get their name and profession
+            doctor_id = None
+            if 'doctorId' in data:
+                doctor_id = data.pop('doctorId')
+            elif 'doctor_id' in data:
+                doctor_id = data.pop('doctor_id')
+            elif 'doctor' in data and data['doctor'].isdigit():
+                doctor_id = data['doctor']
+                
+            if doctor_id:
                 try:
-                    field_id = data.pop(id_field)
-                    if isinstance(field_id, list):
-                        field_id = field_id[0]
-                    if isinstance(field_id, str) and field_id.isdigit():
-                        field_id = int(field_id)
-                    if id_field == 'doctor_id' or id_field == 'patient_id' or id_field == 'lab_technician_id':
-                        data[obj_field] = User.objects.get(id=field_id).id
-                    elif id_field == 'appointment_id':
-                        data[obj_field] = Appointment.objects.get(id=field_id).id
-                    print(f"Mapped {id_field} to {obj_field} with ID {field_id}")
+                    doctor = User.objects.get(id=doctor_id)
+                    data['doctor'] = doctor.id
+                    if not data.get('doctor_name'):
+                        data['doctor_name'] = f"Dr. {doctor.get_full_name()}"
+                    if not data.get('doctor_profession') and hasattr(doctor, 'get_profession_display'):
+                        data['doctor_profession'] = doctor.get_profession_display()
                 except Exception as e:
-                    print(f"Error mapping {id_field}: {str(e)}")
-                    # Don't fail - just continue
-        
+                    print(f"Error getting doctor details: {e}")
+            
+            # If we have patientId (or patient_id), fetch the patient
+            patient_id = None
+            if 'patientId' in data:
+                patient_id = data.pop('patientId')
+            elif 'patient_id' in data:
+                patient_id = data.pop('patient_id')
+            elif 'patient' in data and data['patient'].isdigit():
+                patient_id = data['patient']
+                
+            if patient_id:
+                try:
+                    patient = User.objects.get(id=patient_id)
+                    data['patient'] = patient.id
+                    if not data.get('patient_name'):
+                        data['patient_name'] = patient.get_full_name()
+                except Exception as e:
+                    print(f"Error getting patient details: {e}")
+                    
+            # Handle appointment data
+            appointment_id = None
+            if 'appointmentId' in data:
+                appointment_id = data.pop('appointmentId')
+            elif 'appointment_id' in data:
+                appointment_id = data.pop('appointment_id')
+            
+            if appointment_id:
+                try:
+                    appointment = Appointment.objects.get(id=appointment_id)
+                    data['appointment'] = appointment.id
+                    
+                    # Set appointment date/time if not provided
+                    if not data.get('appointment_date'):
+                        data['appointment_date'] = str(appointment.appointment_date)
+                    if not data.get('appointment_time'):
+                        data['appointment_time'] = str(appointment.appointment_time)
+                    if not data.get('symptoms') and appointment.symptoms:
+                        data['symptoms'] = appointment.symptoms
+                except Exception as e:
+                    print(f"Error getting appointment details: {e}")
+        except Exception as e:
+            print(f"Error processing IDs: {e}")
+            
         print("Processed data:", data)
         
         # Use special case for empty requests or requests with minimal data
@@ -297,17 +336,20 @@ class PrescriptionCreateView(generics.CreateAPIView):
                 status=status.HTTP_201_CREATED
             )
         
-        # Process the request 
+        # Process the request using the serializer
         serializer = self.get_serializer(data=data)
         if not serializer.is_valid():
             print("Validation errors:", serializer.errors)
             
-            # Try to create a prescription anyway with the data we have
+            # Try to create a prescription directly
             try:
-                prescription = Prescription.objects.create(**{
+                # Filter the data to only include fields that exist on the model
+                valid_fields = {
                     k: v for k, v in data.items() 
                     if k in [f.name for f in Prescription._meta.get_fields()]
-                })
+                }
+                
+                prescription = Prescription.objects.create(**valid_fields)
                 return Response(
                     {
                         "detail": "Prescription created with available data despite validation errors",
@@ -329,28 +371,22 @@ class PrescriptionCreateView(generics.CreateAPIView):
                 )
         
         # If valid, save the data
-        self.perform_create(serializer)
+        prescription = serializer.save()
+        
+        # Auto-populate additional fields if not provided
+        # This will trigger the model's save method
+        if not prescription.patient_name and prescription.patient:
+            prescription.save()
+            
         headers = self.get_success_headers(serializer.data)
         return Response(
             {
                 "detail": "Prescription created successfully", 
-                "data": serializer.data
+                "data": self.get_serializer(prescription).data
             }, 
             status=status.HTTP_201_CREATED, 
             headers=headers
         )
-    
-    def perform_create(self, serializer):
-        # Try to set some defaults if information is missing
-        defaults = {}
-        if not serializer.validated_data.get('doctor') and self.request.user.user_type == 'doctor':
-            defaults['doctor'] = self.request.user
-            
-        if not serializer.validated_data.get('patient') and self.request.user.user_type == 'patient':
-            defaults['patient'] = self.request.user
-            
-        # Save with any defaults
-        serializer.save(**defaults)
 
 class PrescriptionListView(generics.ListAPIView):
     """

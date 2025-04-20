@@ -19,19 +19,22 @@ class MedicalReportAdmin(admin.ModelAdmin):
 
 @admin.register(Prescription)
 class PrescriptionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'patient', 'doctor', 'lab_technician', 'lab_tests_required', 'status', 'created_at')
+    list_display = ('id', 'patient_name', 'doctor_name', 'appointment_date', 'appointment_time', 'status', 'created_at')
     list_filter = ('lab_tests_required', 'status', 'created_at')
-    search_fields = ('patient__email', 'doctor__email', 'symptoms', 'prescription_text')
+    search_fields = ('patient_name', 'doctor_name', 'symptoms', 'prescription_text')
     readonly_fields = ('created_at', 'updated_at')
     fieldsets = (
-        ('Relationship', {
-            'fields': ('appointment', 'patient', 'doctor', 'lab_technician')
+        ('Patient & Doctor', {
+            'fields': ('patient', 'patient_name', 'doctor', 'doctor_name', 'doctor_profession')
         }),
-        ('Prescription Details', {
-            'fields': ('symptoms', 'appointment_date', 'appointment_time', 'prescription_text')
+        ('Appointment Details', {
+            'fields': ('appointment', 'appointment_date', 'appointment_time', 'symptoms')
+        }),
+        ('Prescription', {
+            'fields': ('prescription_text',)
         }),
         ('Lab Information', {
-            'fields': ('lab_tests_required', 'lab_instructions', 'status')
+            'fields': ('lab_tests_required', 'lab_instructions', 'lab_technician', 'lab_results', 'status')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
