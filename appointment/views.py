@@ -234,9 +234,67 @@ class PrescriptionCreateView(generics.CreateAPIView):
     serializer_class = PrescriptionSerializer
     permission_classes = [IsAuthenticated]
     
+    def create(self, request, *args, **kwargs):
+        # Debug log to see what data is coming in
+        print("Request data:", request.data)
+        
+        # Create a copy of the data we can modify
+        data = request.data.copy()
+        
+        # If the frontend sends patient_id or doctor_id instead of patient/doctor objects,
+        # try to get the appropriate user object
+        if 'patient_id' in data and not 'patient' in data:
+            try:
+                patient_id = data.pop('patient_id')[0] if isinstance(data.get('patient_id'), list) else data.pop('patient_id')
+                data['patient'] = User.objects.get(id=patient_id).id
+                print(f"Found patient with ID {patient_id}")
+            except (User.DoesNotExist, ValueError) as e:
+                print(f"Error finding patient: {e}")
+                
+        if 'doctor_id' in data and not 'doctor' in data:
+            try:
+                doctor_id = data.pop('doctor_id')[0] if isinstance(data.get('doctor_id'), list) else data.pop('doctor_id')
+                data['doctor'] = User.objects.get(id=doctor_id).id
+                print(f"Found doctor with ID {doctor_id}")
+            except (User.DoesNotExist, ValueError) as e:
+                print(f"Error finding doctor: {e}")
+        
+        # Process the request 
+        serializer = self.get_serializer(data=data)
+        if not serializer.is_valid():
+            print("Validation errors:", serializer.errors)
+            return Response(
+                {
+                    "detail": "Validation failed",
+                    "errors": serializer.errors,
+                    "received_data": request.data
+                }, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # If valid, save the data
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {
+                "detail": "Prescription created successfully", 
+                "data": serializer.data
+            }, 
+            status=status.HTTP_201_CREATED, 
+            headers=headers
+        )
+    
     def perform_create(self, serializer):
-        # Allow any user to create prescriptions
-        serializer.save()
+        # Try to set some defaults if information is missing
+        defaults = {}
+        if not serializer.validated_data.get('doctor') and self.request.user.user_type == 'doctor':
+            defaults['doctor'] = self.request.user
+            
+        if not serializer.validated_data.get('patient') and self.request.user.user_type == 'patient':
+            defaults['patient'] = self.request.user
+            
+        # Save with any defaults
+        serializer.save(**defaults)
 
 class PrescriptionListView(generics.ListAPIView):
     """
@@ -317,3 +375,7 @@ class LabTestsRequiredView(generics.ListAPIView):
     def get_queryset(self):
         # Return all prescriptions that require lab tests
         return Prescription.objects.filter(lab_tests_required=True)
+
+def prescription_test_form(request):
+    """Simple view to render the prescription test form"""
+    return render(request, 'appointment/prescription_test.html')
