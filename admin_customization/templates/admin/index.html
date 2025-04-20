@@ -1,0 +1,319 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}{{ block.super }}
+<style type="text/css">
+  .dashboard-header {
+    background-color: #4285F4;
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dashboard-header h1 {
+    font-size: 24px;
+    font-weight: 400;
+    margin: 0;
+  }
+  
+  .dashboard-header p {
+    margin-top: 5px;
+    opacity: 0.9;
+  }
+  
+  .dashboard-stats {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -15px 30px;
+  }
+  
+  .stat-card {
+    flex: 1;
+    min-width: 200px;
+    margin: 0 15px 15px;
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .stat-card-blue {
+    border-left: 4px solid #4285F4;
+  }
+  
+  .stat-card-green {
+    border-left: 4px solid #34A853;
+  }
+  
+  .stat-card-yellow {
+    border-left: 4px solid #FBBC05;
+  }
+  
+  .stat-card-red {
+    border-left: 4px solid #EA4335;
+  }
+  
+  .stat-number {
+    font-size: 36px;
+    font-weight: 300;
+    margin-bottom: 5px;
+  }
+  
+  .stat-label {
+    color: #666;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  
+  .quick-links {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+  }
+  
+  .quick-links h2 {
+    color: #4285F4;
+    font-size: 18px;
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .quick-links-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+  }
+  
+  .quick-link {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  
+  .quick-link:hover {
+    background-color: #4285F4;
+    color: white;
+  }
+  
+  .quick-link:hover a {
+    color: white;
+  }
+  
+  .quick-link i {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #4285F4;
+  }
+  
+  .quick-link:hover i {
+    color: white;
+  }
+  
+  .quick-link a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+  }
+  
+  .recent-activity {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .recent-activity h2 {
+    color: #4285F4;
+    font-size: 18px;
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .activity-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .activity-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .activity-item:last-child {
+    border-bottom: none;
+  }
+  
+  .activity-icon {
+    display: inline-block;
+    width: 30px;
+    text-align: center;
+    margin-right: 10px;
+  }
+  
+  .activity-icon i {
+    color: #4285F4;
+  }
+  
+  .activity-detail {
+    font-size: 14px;
+  }
+  
+  .activity-time {
+    color: #666;
+    font-size: 12px;
+    float: right;
+    margin-top: 3px;
+  }
+  
+  .module {
+    margin-bottom: 30px;
+  }
+  
+  .module h2 {
+    background-color: #4285F4;
+    color: white;
+    border-radius: 8px 8px 0 0;
+  }
+  
+  .module table {
+    border-radius: 0 0 8px 8px;
+  }
+</style>
+{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <h1>ZenCare Administration Dashboard</h1>
+  <p>Welcome to the ZenCare administration panel. Here you can manage users, appointments, and medical records.</p>
+</div>
+
+<div class="dashboard-stats">
+  <div class="stat-card stat-card-blue">
+    <div class="stat-number">{{ model_count.users|default:"0" }}</div>
+    <div class="stat-label">Users</div>
+  </div>
+  <div class="stat-card stat-card-green">
+    <div class="stat-number">{{ model_count.doctors|default:"0" }}</div>
+    <div class="stat-label">Doctors</div>
+  </div>
+  <div class="stat-card stat-card-yellow">
+    <div class="stat-number">{{ model_count.appointments|default:"0" }}</div>
+    <div class="stat-label">Appointments</div>
+  </div>
+  <div class="stat-card stat-card-red">
+    <div class="stat-number">{{ model_count.reports|default:"0" }}</div>
+    <div class="stat-label">Medical Reports</div>
+  </div>
+</div>
+
+<div class="quick-links">
+  <h2>Quick Links</h2>
+  <div class="quick-links-grid">
+    <div class="quick-link">
+      <i class="fas fa-users"></i><br>
+      <a href="{% url 'admin:backapp_user_changelist' %}">Manage Users</a>
+    </div>
+    <div class="quick-link">
+      <i class="fas fa-calendar-alt"></i><br>
+      <a href="{% url 'admin:appointment_appointment_changelist' %}">Manage Appointments</a>
+    </div>
+    <div class="quick-link">
+      <i class="fas fa-prescription"></i><br>
+      <a href="{% url 'admin:appointment_prescription_changelist' %}">Manage Prescriptions</a>
+    </div>
+    <div class="quick-link">
+      <i class="fas fa-file-medical"></i><br>
+      <a href="{% url 'admin:appointment_medicalreport_changelist' %}">Manage Medical Reports</a>
+    </div>
+  </div>
+</div>
+
+<div id="content-main">
+{% if app_list %}
+  {% for app in app_list %}
+    <div class="app-{{ app.app_label }} module{% if app.app_url in request.path|urlencode %} current-app{% endif %}">
+      <table>
+        <caption>
+          <a href="{{ app.app_url }}" class="section" title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}">{{ app.name }}</a>
+        </caption>
+        {% for model in app.models %}
+          <tr class="model-{{ model.object_name|lower }}{% if model.admin_url in request.path|urlencode %} current-model{% endif %}">
+            {% if model.admin_url %}
+              <th scope="row"><a href="{{ model.admin_url }}"{% if model.admin_url in request.path|urlencode %} aria-current="page"{% endif %}>{{ model.name }}</a></th>
+            {% else %}
+              <th scope="row">{{ model.name }}</th>
+            {% endif %}
+
+            {% if model.add_url %}
+              <td><a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a></td>
+            {% else %}
+              <td></td>
+            {% endif %}
+
+            {% if model.admin_url and show_changelinks %}
+              {% if model.view_only %}
+                <td><a href="{{ model.admin_url }}" class="viewlink">{% translate 'View' %}</a></td>
+              {% else %}
+                <td><a href="{{ model.admin_url }}" class="changelink">{% translate 'Change' %}</a></td>
+              {% endif %}
+            {% else %}
+              <td></td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </table>
+    </div>
+  {% endfor %}
+{% else %}
+  <p>{% translate 'You don't have permission to view or edit anything.' %}</p>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<div class="recent-activity">
+  <h2>Recent Activity</h2>
+  <ul class="activity-list">
+    {% for entry in recent_actions|slice:":10" %}
+      <li class="activity-item">
+        <span class="activity-icon">
+          {% if entry.is_addition %}<i class="fas fa-plus-circle"></i>
+          {% elif entry.is_change %}<i class="fas fa-edit"></i>
+          {% elif entry.is_deletion %}<i class="fas fa-trash-alt"></i>
+          {% endif %}
+        </span>
+        <span class="activity-detail">
+          {% if entry.is_addition %}Added {{ entry.content_type.name }}
+          {% elif entry.is_change %}Changed {{ entry.content_type.name }}
+          {% elif entry.is_deletion %}Deleted {{ entry.content_type.name }}
+          {% endif %}
+          {% if entry.object_repr %}"{{ entry.object_repr }}"{% endif %}
+        </span>
+        <span class="activity-time">{{ entry.action_time|date:"M d, h:i a" }}</span>
+      </li>
+    {% empty %}
+      <li class="activity-item">No recent actions.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %} 
