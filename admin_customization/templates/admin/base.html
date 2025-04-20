@@ -1,0 +1,134 @@
+{% load i18n static %}
+<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
+<html lang="{{ LANGUAGE_CODE|default:"en-us" }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr,auto' }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('ZenCare Admin') }}{% endblock %}</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="{% block stylesheet %}{% static "admin/css/base.css" %}{% endblock %}">
+    <link rel="stylesheet" type="text/css" href="{% static "admin/css/custom_admin.css" %}">
+    {% block extrastyle %}{% endblock %}
+    {% if LANGUAGE_BIDI %}<link rel="stylesheet" type="text/css" href="{% block stylesheet_rtl %}{% static "admin/css/rtl.css" %}{% endblock %}">{% endif %}
+    {% block extrahead %}{% endblock %}
+    {% block responsive %}
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    {% endblock %}
+    {% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE">{% endblock %}
+</head>
+
+<body class="{% if is_popup %}popup {% endif %}{% block bodyclass %}{% endblock %}"
+  data-admin-utc-offset="{% now "Z" %}">
+
+<!-- Container -->
+<div id="container">
+
+    {% if not is_popup %}
+    <!-- Header -->
+    <div id="header">
+        <div id="branding">
+            {% block branding %}
+            <h1 id="site-name">
+                <img src="{% static 'admin/img/zencare-logo.png' %}" alt="ZenCare Logo" onerror="this.style.display='none'">
+                <a href="{% url 'admin:index' %}">{{ site_header|default:_('ZenCare Administration') }}</a>
+            </h1>
+            {% endblock %}
+        </div>
+        {% block usertools %}
+        {% if has_permission %}
+        <div id="user-tools">
+            {% block welcome-msg %}
+                {% translate 'Welcome,' %}
+                <strong>{% firstof user.get_short_name user.get_username %}</strong>.
+            {% endblock %}
+            {% block userlinks %}
+                {% if site_url %}
+                    <a href="{{ site_url }}">{% translate 'View site' %}</a> /
+                {% endif %}
+                {% if user.is_active and user.is_staff %}
+                    {% url 'django-admindocs-docroot' as docsroot %}
+                    {% if docsroot %}
+                        <a href="{{ docsroot }}">{% translate 'Documentation' %}</a> /
+                    {% endif %}
+                {% endif %}
+                {% if user.has_usable_password %}
+                <a href="{% url 'admin:password_change' %}">{% translate 'Change password' %}</a> /
+                {% endif %}
+                <a href="{% url 'admin:logout' %}">{% translate 'Log out' %}</a>
+            {% endblock %}
+        </div>
+        {% endif %}
+        {% endblock %}
+        {% block nav-global %}{% endblock %}
+    </div>
+    <!-- END Header -->
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <ul class="sidebar-menu">
+            <li class="{% if request.path == '/admin/' %}active{% endif %}">
+                <a href="{% url 'admin:index' %}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            </li>
+            <li class="{% if 'backapp/user' in request.path %}active{% endif %}">
+                <a href="{% url 'admin:backapp_user_changelist' %}"><i class="fas fa-users"></i> Users</a>
+            </li>
+            <li class="{% if 'appointment/appointment' in request.path %}active{% endif %}">
+                <a href="{% url 'admin:appointment_appointment_changelist' %}"><i class="fas fa-calendar-alt"></i> Appointments</a>
+            </li>
+            <li class="{% if 'appointment/prescription' in request.path %}active{% endif %}">
+                <a href="{% url 'admin:appointment_prescription_changelist' %}"><i class="fas fa-prescription"></i> Prescriptions</a>
+            </li>
+            <li class="{% if 'appointment/medicalreport' in request.path %}active{% endif %}">
+                <a href="{% url 'admin:appointment_medicalreport_changelist' %}"><i class="fas fa-file-medical"></i> Medical Reports</a>
+            </li>
+            <li>
+                <a href="{% url 'admin:logout' %}"><i class="fas fa-sign-out-alt"></i> Log Out</a>
+            </li>
+        </ul>
+    </div>
+    <!-- END Sidebar -->
+    {% endif %}
+
+    <!-- Content -->
+    <div id="content" class="{% block coltype %}colM{% endblock %}">
+        {% block pretitle %}{% endblock %}
+        {% block content_title %}{% if title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
+        {% block content_subtitle %}{% if subtitle %}<h2>{{ subtitle }}</h2>{% endif %}{% endblock %}
+        {% block content %}
+        {% block object-tools %}{% endblock %}
+        {{ content }}
+        {% endblock %}
+        {% block sidebar %}{% endblock %}
+        <br class="clear">
+    </div>
+    <!-- END Content -->
+
+    {% block footer %}<div id="footer"></div>{% endblock %}
+</div>
+<!-- END Container -->
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Add status badges to appointment status columns
+        $('.field-status, .field-get_status_display').each(function() {
+            var text = $(this).text().trim();
+            if (text == 'Pending') {
+                $(this).html('<span class="status-badge status-pending">Pending</span>');
+            } else if (text == 'Confirmed') {
+                $(this).html('<span class="status-badge status-confirmed">Confirmed</span>');
+            } else if (text == 'Completed') {
+                $(this).html('<span class="status-badge status-completed">Completed</span>');
+            } else if (text == 'Cancelled') {
+                $(this).html('<span class="status-badge status-cancelled">Cancelled</span>');
+            }
+        });
+    });
+</script>
+{% block extrajs %}{% endblock %}
+
+</body>
+</html> 
