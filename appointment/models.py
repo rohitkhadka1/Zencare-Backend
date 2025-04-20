@@ -108,10 +108,13 @@ class Prescription(models.Model):
     patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='patient_prescriptions', null=True, blank=True)
     doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='doctor_prescriptions', null=True, blank=True)
     
-    # Renamed fields as per frontend team's requirements
-    symptoms = models.TextField(help_text="Doctor's diagnosis (previously diagnosis)", blank=True, null=True)
-    appointment_time = models.TextField(help_text="Prescribed medications (previously medication)", blank=True, null=True)
-    appointment_date = models.TextField(help_text="Instructions for the patient (previously instructions)", blank=True, null=True)
+    # Fields matching frontend display
+    symptoms = models.TextField(blank=True, null=True, help_text="Patient's symptoms")
+    appointment_time = models.TextField(blank=True, null=True, help_text="Appointment time")
+    appointment_date = models.TextField(blank=True, null=True, help_text="Appointment date")
+    
+    # New field for doctor's prescription text
+    prescription_text = models.TextField(blank=True, null=True, help_text="Doctor's prescription text")
     
     # Make all lab test related fields optional
     lab_tests_required = models.BooleanField(default=False, help_text="Whether lab tests are required", null=True, blank=True)

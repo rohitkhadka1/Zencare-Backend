@@ -21,14 +21,14 @@ class MedicalReportAdmin(admin.ModelAdmin):
 class PrescriptionAdmin(admin.ModelAdmin):
     list_display = ('id', 'patient', 'doctor', 'lab_technician', 'lab_tests_required', 'status', 'created_at')
     list_filter = ('lab_tests_required', 'status', 'created_at')
-    search_fields = ('patient__email', 'doctor__email', 'diagnosis', 'medication')
+    search_fields = ('patient__email', 'doctor__email', 'symptoms', 'prescription_text')
     readonly_fields = ('created_at', 'updated_at')
     fieldsets = (
         ('Relationship', {
             'fields': ('appointment', 'patient', 'doctor', 'lab_technician')
         }),
         ('Prescription Details', {
-            'fields': ('diagnosis', 'medication', 'instructions')
+            'fields': ('symptoms', 'appointment_date', 'appointment_time', 'prescription_text')
         }),
         ('Lab Information', {
             'fields': ('lab_tests_required', 'lab_instructions', 'status')
