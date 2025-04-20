@@ -236,157 +236,243 @@ class PrescriptionCreateView(generics.CreateAPIView):
     
     def create(self, request, *args, **kwargs):
         # Debug log to see what data is coming in
+        print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print("PRESCRIPTION CREATE VIEW")
         print("Request data:", request.data)
+        print("Request content type:", request.content_type)
+        print("Request method:", request.method)
+        print("Request headers:", {k: v for k, v in request.headers.items() if k.lower() != 'authorization'})
+        print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
         
-        # Create a copy of the data we can modify
-        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        
-        # If data comes in lists (like from form-data), extract first element
-        for key in list(data.keys()):
-            if isinstance(data[key], list) and len(data[key]) > 0:
-                data[key] = data[key][0]
-        
-        # Legacy field mapping
-        field_mapping = {
-            'diagnosis': 'symptoms',
-            'medication': 'prescription_text',
-            'instructions': 'lab_instructions'
-        }
-        
-        # Map legacy fields to new ones
-        for old_field, new_field in field_mapping.items():
-            if old_field in data and not new_field in data:
-                data[new_field] = data[old_field]
-        
-        # Extract IDs from the data
         try:
-            # If we have doctorId (or doctor_id), fetch the doctor and get their name and profession
-            doctor_id = None
-            if 'doctorId' in data:
-                doctor_id = data.pop('doctorId')
-            elif 'doctor_id' in data:
-                doctor_id = data.pop('doctor_id')
-            elif 'doctor' in data and data['doctor'].isdigit():
-                doctor_id = data['doctor']
+            # Create a copy of the data we can modify
+            data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            
+            # If data comes in lists (like from form-data), extract first element
+            for key in list(data.keys()):
+                if isinstance(data[key], list) and len(data[key]) > 0:
+                    data[key] = data[key][0]
+            
+            # Support format from the screenshot UI
+            # Common field renaming
+            field_mapping = {
+                # Legacy field renames
+                'diagnosis': 'symptoms',
+                'medication': 'prescription_text',
+                'instructions': 'lab_instructions',
                 
-            if doctor_id:
-                try:
-                    doctor = User.objects.get(id=doctor_id)
-                    data['doctor'] = doctor.id
-                    if not data.get('doctor_name'):
-                        data['doctor_name'] = f"Dr. {doctor.get_full_name()}"
-                    if not data.get('doctor_profession') and hasattr(doctor, 'get_profession_display'):
-                        data['doctor_profession'] = doctor.get_profession_display()
-                except Exception as e:
-                    print(f"Error getting doctor details: {e}")
+                # Frontend form fields mapping
+                'doctorName': 'doctor_name',
+                'patientName': 'patient_name',
+                'doctorProfession': 'doctor_profession',
+                'appointmentDate': 'appointment_date',
+                'appointmentTime': 'appointment_time',
+                'doctorNotes': 'prescription_text',
+                'doctorsPrescription': 'prescription_text',  # another common name
+                'notes': 'prescription_text',
+                'description': 'symptoms'
+            }
             
-            # If we have patientId (or patient_id), fetch the patient
-            patient_id = None
-            if 'patientId' in data:
-                patient_id = data.pop('patientId')
-            elif 'patient_id' in data:
-                patient_id = data.pop('patient_id')
-            elif 'patient' in data and data['patient'].isdigit():
-                patient_id = data['patient']
-                
-            if patient_id:
-                try:
-                    patient = User.objects.get(id=patient_id)
-                    data['patient'] = patient.id
-                    if not data.get('patient_name'):
-                        data['patient_name'] = patient.get_full_name()
-                except Exception as e:
-                    print(f"Error getting patient details: {e}")
-                    
-            # Handle appointment data
-            appointment_id = None
-            if 'appointmentId' in data:
-                appointment_id = data.pop('appointmentId')
-            elif 'appointment_id' in data:
-                appointment_id = data.pop('appointment_id')
+            # Map fields based on renaming map
+            for frontend_field, model_field in field_mapping.items():
+                if frontend_field in data and not model_field in data:
+                    data[model_field] = data.pop(frontend_field)
             
-            if appointment_id:
-                try:
-                    appointment = Appointment.objects.get(id=appointment_id)
-                    data['appointment'] = appointment.id
-                    
-                    # Set appointment date/time if not provided
-                    if not data.get('appointment_date'):
-                        data['appointment_date'] = str(appointment.appointment_date)
-                    if not data.get('appointment_time'):
-                        data['appointment_time'] = str(appointment.appointment_time)
-                    if not data.get('symptoms') and appointment.symptoms:
-                        data['symptoms'] = appointment.symptoms
-                except Exception as e:
-                    print(f"Error getting appointment details: {e}")
-        except Exception as e:
-            print(f"Error processing IDs: {e}")
-            
-        print("Processed data:", data)
-        
-        # Use special case for empty requests or requests with minimal data
-        if not data:
-            # Create an empty prescription if needed
-            prescription = Prescription.objects.create()
-            return Response(
-                {
-                    "detail": "Empty prescription created successfully", 
-                    "data": self.get_serializer(prescription).data
-                }, 
-                status=status.HTTP_201_CREATED
-            )
-        
-        # Process the request using the serializer
-        serializer = self.get_serializer(data=data)
-        if not serializer.is_valid():
-            print("Validation errors:", serializer.errors)
-            
-            # Try to create a prescription directly
+            # Handle ID fields with multiple formats
             try:
-                # Filter the data to only include fields that exist on the model
-                valid_fields = {
-                    k: v for k, v in data.items() 
-                    if k in [f.name for f in Prescription._meta.get_fields()]
-                }
+                # Doctor ID handling
+                doctor_id = None
+                for field_name in ['doctorId', 'doctor_id', 'doctor']:
+                    if field_name in data and not doctor_id:
+                        value = data.get(field_name)
+                        if value and (isinstance(value, int) or (isinstance(value, str) and value.isdigit())):
+                            doctor_id = int(value)
+                            if field_name != 'doctor':  # Don't pop if it's the direct field
+                                data.pop(field_name)
                 
-                prescription = Prescription.objects.create(**valid_fields)
-                return Response(
+                if doctor_id:
+                    try:
+                        doctor = User.objects.get(id=doctor_id)
+                        data['doctor'] = doctor.id
+                        # Auto-populate related fields
+                        if not data.get('doctor_name'):
+                            data['doctor_name'] = f"Dr. {doctor.get_full_name()}"
+                        if not data.get('doctor_profession') and hasattr(doctor, 'get_profession_display'):
+                            data['doctor_profession'] = doctor.get_profession_display()
+                    except Exception as e:
+                        print(f"Error getting doctor details: {e}")
+                
+                # Patient ID handling
+                patient_id = None
+                for field_name in ['patientId', 'patient_id', 'patient']:
+                    if field_name in data and not patient_id:
+                        value = data.get(field_name)
+                        if value and (isinstance(value, int) or (isinstance(value, str) and value.isdigit())):
+                            patient_id = int(value)
+                            if field_name != 'patient':  # Don't pop if it's the direct field
+                                data.pop(field_name)
+                
+                if patient_id:
+                    try:
+                        patient = User.objects.get(id=patient_id)
+                        data['patient'] = patient.id
+                        # Auto-populate patient name
+                        if not data.get('patient_name'):
+                            data['patient_name'] = patient.get_full_name()
+                    except Exception as e:
+                        print(f"Error getting patient details: {e}")
+                            
+                # Handle appointment data
+                appointment_id = None
+                for field_name in ['appointmentId', 'appointment_id', 'appointment']:
+                    if field_name in data and not appointment_id:
+                        value = data.get(field_name)
+                        if value and (isinstance(value, int) or (isinstance(value, str) and value.isdigit())):
+                            appointment_id = int(value)
+                            if field_name != 'appointment':  # Don't pop if it's the direct field
+                                data.pop(field_name)
+                
+                if appointment_id:
+                    try:
+                        appointment = Appointment.objects.get(id=appointment_id)
+                        data['appointment'] = appointment.id
+                        
+                        # Set appointment date/time if not provided
+                        if not data.get('appointment_date'):
+                            data['appointment_date'] = str(appointment.appointment_date)
+                        if not data.get('appointment_time'):
+                            data['appointment_time'] = str(appointment.appointment_time)
+                        if not data.get('symptoms') and appointment.symptoms:
+                            data['symptoms'] = appointment.symptoms
+                            
+                        # Also populate patient and doctor if not already set
+                        if not data.get('patient') and appointment.patient:
+                            data['patient'] = appointment.patient.id
+                            if not data.get('patient_name'):
+                                data['patient_name'] = appointment.patient.get_full_name()
+                                
+                        if not data.get('doctor') and appointment.doctor:
+                            data['doctor'] = appointment.doctor.id
+                            if not data.get('doctor_name'):
+                                data['doctor_name'] = f"Dr. {appointment.doctor.get_full_name()}"
+                    except Exception as e:
+                        print(f"Error getting appointment details: {e}")
+            except Exception as e:
+                print(f"Error processing IDs: {e}")
+                
+            # Current user auto-assignment (if fields not specified)
+            if 'doctor' not in data and request.user.user_type == 'doctor':
+                data['doctor'] = request.user.id
+                if not data.get('doctor_name'):
+                    data['doctor_name'] = f"Dr. {request.user.get_full_name()}"
+                    
+            if 'patient' not in data and request.user.user_type == 'patient':
+                data['patient'] = request.user.id
+                if not data.get('patient_name'):
+                    data['patient_name'] = request.user.get_full_name()
+            
+            print("Processed data:", data)
+            
+            # Use special case for empty requests or requests with minimal data
+            if not data:
+                # Create an empty prescription if needed
+                prescription = Prescription.objects.create()
+                response = Response(
                     {
-                        "detail": "Prescription created with available data despite validation errors",
-                        "warning": "Some fields may not have been processed correctly",
+                        "detail": "Empty prescription created successfully", 
                         "data": self.get_serializer(prescription).data
-                    },
+                    }, 
                     status=status.HTTP_201_CREATED
                 )
-            except Exception as e:
-                print(f"Error creating prescription directly: {str(e)}")
-                # Return the normal error response if direct creation fails
-                return Response(
-                    {
-                        "detail": "Validation failed",
-                        "errors": serializer.errors,
-                        "received_data": request.data
-                    }, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # If valid, save the data
-        prescription = serializer.save()
-        
-        # Auto-populate additional fields if not provided
-        # This will trigger the model's save method
-        if not prescription.patient_name and prescription.patient:
-            prescription.save()
+                # Add CORS headers
+                response["Access-Control-Allow-Origin"] = "*"
+                response["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+                response["Access-Control-Allow-Headers"] = "Origin, Content-Type, Accept, Authorization, X-Request-With"
+                return response
             
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            {
-                "detail": "Prescription created successfully", 
-                "data": self.get_serializer(prescription).data
-            }, 
-            status=status.HTTP_201_CREATED, 
-            headers=headers
-        )
+            # Process the request using the serializer
+            serializer = self.get_serializer(data=data)
+            if not serializer.is_valid():
+                print("Validation errors:", serializer.errors)
+                
+                # Try direct creation as fallback
+                try:
+                    # Filter the data to only include fields that exist on the model
+                    valid_fields = {
+                        k: v for k, v in data.items() 
+                        if k in [f.name for f in Prescription._meta.get_fields()]
+                    }
+                    
+                    prescription = Prescription.objects.create(**valid_fields)
+                    response = Response(
+                        {
+                            "detail": "Prescription created with available data despite validation errors",
+                            "warning": "Some fields may not have been processed correctly",
+                            "data": self.get_serializer(prescription).data
+                        },
+                        status=status.HTTP_201_CREATED
+                    )
+                    # Add CORS headers
+                    response["Access-Control-Allow-Origin"] = "*"
+                    response["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+                    response["Access-Control-Allow-Headers"] = "Origin, Content-Type, Accept, Authorization, X-Request-With"
+                    return response
+                except Exception as e:
+                    print(f"Error creating prescription directly: {str(e)}")
+                    # Return the normal error response if direct creation fails
+                    response = Response(
+                        {
+                            "detail": "Validation failed",
+                            "errors": serializer.errors,
+                            "received_data": request.data
+                        }, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                    # Add CORS headers
+                    response["Access-Control-Allow-Origin"] = "*"
+                    response["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+                    response["Access-Control-Allow-Headers"] = "Origin, Content-Type, Accept, Authorization, X-Request-With"
+                    return response
+            
+            # If valid, save the data
+            prescription = serializer.save()
+            
+            # Auto-populate additional fields if not provided
+            # This will trigger the model's save method
+            if not prescription.patient_name and prescription.patient:
+                prescription.save()
+                
+            headers = self.get_success_headers(serializer.data)
+            response = Response(
+                {
+                    "detail": "Prescription created successfully", 
+                    "data": self.get_serializer(prescription).data
+                }, 
+                status=status.HTTP_201_CREATED, 
+                headers=headers
+            )
+            # Add CORS headers
+            response["Access-Control-Allow-Origin"] = "*"
+            response["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response["Access-Control-Allow-Headers"] = "Origin, Content-Type, Accept, Authorization, X-Request-With"
+            return response
+        except Exception as e:
+            # Handle any unexpected exceptions
+            print(f"Unexpected error in prescription create: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            response = Response(
+                {
+                    "detail": "An unexpected error occurred",
+                    "error": str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            # Add CORS headers
+            response["Access-Control-Allow-Origin"] = "*"
+            response["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response["Access-Control-Allow-Headers"] = "Origin, Content-Type, Accept, Authorization, X-Request-With"
+            return response
 
 class PrescriptionListView(generics.ListAPIView):
     """
