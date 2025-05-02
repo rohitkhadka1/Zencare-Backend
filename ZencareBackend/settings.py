@@ -27,17 +27,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-ez_h*1!+(&cq9we#sp3g83h)!_co760ubywi(m)kb!a(oq*1er')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-# Update ALLOWED_HOSTS to include Render domain and localhost
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '.onrender.com',  # This will allow all subdomains of onrender.com
-]
+# Update ALLOWED_HOSTS to use environment variable
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,.onrender.com').split(',')
 
 
 # Application definition
@@ -70,13 +66,10 @@ MIDDLEWARE = [
 ]
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React default port
-    "http://127.0.0.1:3000",
-]
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
 
-# For development, you can use this instead:
-CORS_ALLOW_ALL_ORIGINS = True
+# Disable this in production
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -103,12 +96,15 @@ CORS_ALLOW_METHODS = [
 ]
 
 # Security settings
-SECURE_SSL_REDIRECT = False  # Set to True in production
-SESSION_COOKIE_SECURE = False  # Set to True in production
-CSRF_COOKIE_SECURE = False  # Set to True in production
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+
+# Add CSRF trusted origins
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 ROOT_URLCONF = 'ZencareBackend.urls'
 
