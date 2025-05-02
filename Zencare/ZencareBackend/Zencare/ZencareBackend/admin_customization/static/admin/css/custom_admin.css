@@ -1,0 +1,261 @@
+/* ZenCare Custom Admin Styles */
+
+:root {
+  --primary-color: #4285F4;
+  --secondary-color: #EDF5FF;
+  --accent-color: #0E4DA4;
+  --text-color: #333333;
+  --light-text: #FFFFFF;
+  --danger-color: #DC3545;
+  --success-color: #28A745;
+  --warning-color: #FFC107;
+  --info-color: #17A2B8;
+  --border-radius: 4px;
+  --box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Main layout */
+body {
+  font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-color);
+  background-color: #f5f7fa;
+  line-height: 1.6;
+}
+
+/* Header */
+#header {
+  background-color: var(--primary-color);
+  color: var(--light-text);
+  box-shadow: var(--box-shadow);
+  height: 70px;
+  line-height: 70px;
+}
+
+#header a:link, #header a:visited {
+  color: var(--light-text);
+}
+
+#branding h1 {
+  font-weight: 300;
+  font-size: 24px;
+}
+
+#branding h1 img {
+  height: 40px;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+/* Sidebar */
+.sidebar {
+  background-color: var(--secondary-color);
+  width: 200px;
+  border-right: 1px solid #e5e5e5;
+  box-shadow: var(--box-shadow);
+}
+
+.sidebar-menu {
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-menu li {
+  margin: 0;
+  padding: 12px 15px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.sidebar-menu li a {
+  color: var(--text-color);
+  text-decoration: none;
+  display: block;
+}
+
+.sidebar-menu li.active {
+  background-color: var(--primary-color);
+}
+
+.sidebar-menu li.active a {
+  color: var(--light-text);
+}
+
+/* Content */
+.content {
+  padding: 20px;
+}
+
+.dashboard .module h2, 
+.app-backapp .module h2,
+.app-appointment .module h2 {
+  background-color: var(--primary-color);
+  color: var(--light-text);
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  padding: 12px 15px;
+  font-weight: 400;
+}
+
+.dashboard .module table th,
+.app-backapp .module table th,
+.app-appointment .module table th {
+  background-color: #e9ecef;
+}
+
+/* Form elements */
+input[type="text"], 
+input[type="password"], 
+input[type="email"], 
+textarea, 
+select {
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius);
+  padding: 8px 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.submit-row input[type="submit"] {
+  background-color: var(--primary-color);
+  color: var(--light-text);
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 10px 15px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.submit-row a.button {
+  background-color: #6c757d;
+  color: var(--light-text);
+  border-radius: var(--border-radius);
+  padding: 10px 15px;
+  text-decoration: none;
+}
+
+.submit-row a.deletelink {
+  background-color: var(--danger-color);
+}
+
+/* Buttons */
+.button, input[type="submit"], input[type="button"] {
+  background-color: var(--primary-color);
+  color: var(--light-text);
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 8px 15px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  font-weight: 500;
+}
+
+.button.default, input[type="submit"].default {
+  background-color: var(--success-color);
+}
+
+.addlink {
+  background-color: var(--success-color);
+}
+
+.changelink {
+  background-color: var(--warning-color);
+}
+
+.deletelink {
+  background-color: var(--danger-color);
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: var(--box-shadow);
+}
+
+th {
+  text-align: left;
+  background-color: var(--secondary-color);
+  padding: 12px 15px;
+  font-weight: 500;
+}
+
+td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+tr:hover {
+  background-color: #f1f1f1;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-pending {
+  background-color: var(--warning-color);
+  color: #212529;
+}
+
+.status-confirmed {
+  background-color: var(--info-color);
+  color: var(--light-text);
+}
+
+.status-completed {
+  background-color: var(--success-color);
+  color: var(--light-text);
+}
+
+.status-cancelled {
+  background-color: var(--danger-color);
+  color: var(--light-text);
+}
+
+/* Dashboard widgets */
+.dashboard .module {
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+/* Login form */
+.login #content {
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  max-width: 400px;
+  margin: 100px auto;
+  padding: 30px;
+}
+
+.login .form-row {
+  margin-bottom: 20px;
+}
+
+.login .form-row label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.login .submit-row {
+  margin-top: 25px;
+}
+
+.login .submit-row input {
+  width: 100%;
+} 

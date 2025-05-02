@@ -95,26 +95,97 @@ class MedicalReport(models.Model):
 
 class Prescription(models.Model):
     """
-    Prescription model to store doctor's instructions for patients and lab technicians.
-    This connects the doctor, patient, and appointment.
+    Prescription model to store doctor's prescriptions for patients.
+    Exactly matches the fields shown in the frontend UI.
     """
     STATUS_CHOICES = (
-        ('pending', 'Pending Lab Tests'),
+        ('pending', 'Pending'),
         ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
     )
     
-    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='prescriptions')
-    patient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='patient_prescriptions')
-    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='doctor_prescriptions')
+    # Core relationships - making all optional for flexibility
+    patient = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='patient_prescriptions', 
+        null=True, 
+        blank=True,
+        help_text="Patient receiving the prescription"
+    )
     
-    # Doctor's prescription details
-    diagnosis = models.TextField(help_text="Doctor's diagnosis")
-    medication = models.TextField(help_text="Prescribed medications")
-    instructions = models.TextField(help_text="Instructions for the patient")
+    doctor = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='doctor_prescriptions', 
+        null=True, 
+        blank=True,
+        help_text="Doctor issuing the prescription"
+    )
     
-    # Lab test related fields
-    lab_tests_required = models.BooleanField(default=False, help_text="Whether lab tests are required")
-    lab_instructions = models.TextField(blank=True, help_text="Instructions for the lab technician")
+    # Fields directly matching the screenshot
+    patient_name = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True, 
+        help_text="Patient's full name"
+    )
+    
+    doctor_name = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True, 
+        help_text="Doctor's full name with title"
+    )
+    
+    doctor_profession = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True, 
+        help_text="Doctor's specialty or profession"
+    )
+    
+    appointment_date = models.CharField(
+        max_length=20, 
+        blank=True, 
+        null=True, 
+        help_text="Date of the appointment (YYYY-MM-DD)"
+    )
+    
+    appointment_time = models.CharField(
+        max_length=20, 
+        blank=True, 
+        null=True, 
+        help_text="Time of the appointment (HH:MM:SS)"
+    )
+    
+    symptoms = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Patient's symptoms"
+    )
+    
+    # Doctor's prescription text (what the doctor writes in the textarea)
+    prescription_text = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Doctor's prescription text"
+    )
+    
+    # Lab technician related fields (not shown in screenshot but needed)
+    lab_tests_required = models.BooleanField(
+        default=False, 
+        help_text="Whether lab tests are required", 
+        null=True, 
+        blank=True
+    )
+    
+    lab_instructions = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Instructions for the lab technician"
+    )
+    
     lab_technician = models.ForeignKey(
         User, 
         on_delete=models.SET_NULL, 
@@ -123,7 +194,30 @@ class Prescription(models.Model):
         blank=True,
         help_text="Assigned lab technician"
     )
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    lab_results = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Results from lab tests"
+    )
+    
+    # Status tracking
+    status = models.CharField(
+        max_length=20, 
+        choices=STATUS_CHOICES, 
+        default='pending', 
+        null=True, 
+        blank=True
+    )
+    
+    # Related appointment if any
+    appointment = models.ForeignKey(
+        Appointment, 
+        on_delete=models.SET_NULL, 
+        related_name='prescriptions', 
+        null=True, 
+        blank=True
+    )
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -133,4 +227,33 @@ class Prescription(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"Prescription for {self.patient.get_full_name()} by Dr. {self.doctor.get_full_name()}"
+        if self.patient_name and self.doctor_name:
+            return f"Prescription for {self.patient_name} by {self.doctor_name}"
+        elif self.patient and self.doctor:
+            patient_name = self.patient.get_full_name()
+            doctor_name = f"Dr. {self.doctor.get_full_name()}"
+            return f"Prescription for {patient_name} by {doctor_name}"
+        else:
+            return f"Prescription #{self.id}"
+    
+    def save(self, *args, **kwargs):
+        # Auto-populate name fields if they're empty but we have related objects
+        if not self.patient_name and self.patient:
+            self.patient_name = self.patient.get_full_name()
+            
+        if not self.doctor_name and self.doctor:
+            self.doctor_name = f"Dr. {self.doctor.get_full_name()}"
+            
+        if not self.doctor_profession and self.doctor and hasattr(self.doctor, 'get_profession_display'):
+            self.doctor_profession = self.doctor.get_profession_display()
+            
+        if not self.appointment_date and self.appointment:
+            self.appointment_date = str(self.appointment.appointment_date)
+            
+        if not self.appointment_time and self.appointment:
+            self.appointment_time = str(self.appointment.appointment_time)
+            
+        if not self.symptoms and self.appointment:
+            self.symptoms = self.appointment.symptoms
+            
+        super().save(*args, **kwargs)
