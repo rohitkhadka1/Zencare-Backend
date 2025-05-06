@@ -1,1 +1,0 @@
-web: cd Zencare/ZencareBackend && gunicorn ZencareBackend.wsgi:application --log-file - 
