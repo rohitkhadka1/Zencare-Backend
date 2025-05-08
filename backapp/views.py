@@ -61,6 +61,19 @@ class HomeView(APIView):
                     'create': '/appointment/prescriptions/create/',
                     'detail': '/appointment/prescriptions/<id>/',
                     'lab_tests': '/appointment/lab-tests-required/'  # For lab technicians
+                },
+                'auth': {
+                    'password_reset': '/auth/password_reset/',
+                    'password_reset_confirm': '/auth/reset/<uidb64>/<token>/',
+                    'password_reset_done': '/auth/password_reset/done/',
+                    'password_reset_complete': '/auth/reset/done/'
+                },
+                'notifications': {
+                    'list': '/notifications/',
+                    'detail': '/notifications/<id>/',
+                    'mark_as_read': '/notifications/<id>/mark_as_read/',
+                    'mark_all_as_read': '/notifications/mark_all_as_read/',
+                    'unread_count': '/notifications/unread_count/'
                 }
             }
         })

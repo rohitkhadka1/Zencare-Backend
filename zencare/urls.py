@@ -21,12 +21,19 @@ from django.conf import settings
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.views.static import serve
 from django.views.generic import RedirectView
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('', RedirectView.as_view(url='/api/v1/')),  # Redirect root URL to API homepage
     path('admin/', admin.site.urls),
     path('api/v1/', include('backapp.urls')),
     path('api/v1/appointment/', include('appointment.urls')),
+    path('api/v1/', include('notifications.urls')),  # Include notifications URLs
+    # Password reset URLs
+    path('api/v1/auth/password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
+    path('api/v1/auth/password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('api/v1/auth/reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('api/v1/auth/reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
 ] 
 
 # Serve media files in all environments
