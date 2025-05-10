@@ -112,7 +112,10 @@ ROOT_URLCONF = 'zencare.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'admin_customization', 'templates')],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'admin_customization', 'templates'),
+            os.path.join(BASE_DIR, 'templates'),  # Add templates directory
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

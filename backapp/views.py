@@ -273,6 +273,8 @@ class PasswordResetAPIView(APIView):
             reset_form = PasswordResetForm(data={'email': email})
             
             if reset_form.is_valid():
+                # Get the current site domain
+                domain = request.META.get('HTTP_HOST', 'localhost:8000')
                 # This will send the email if a valid user with that email exists
                 reset_form.save(
                     request=request,
@@ -280,6 +282,7 @@ class PasswordResetAPIView(APIView):
                     from_email=None,  # Uses DEFAULT_FROM_EMAIL from settings
                     email_template_name='registration/password_reset_email.html',
                     subject_template_name='registration/password_reset_subject.txt',
+                    domain_override=domain,  # Override the domain for the reset link
                 )
                 return Response({'detail': 'Password reset email has been sent.'}, status=status.HTTP_200_OK)
             else:
