@@ -15,6 +15,11 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from django.core.exceptions import ValidationError
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.decorators import action
+from django.contrib.auth.forms import PasswordResetForm
+from django.contrib.auth.tokens import default_token_generator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
+from django.utils.decorators import method_decorator
 
 logger = logging.getLogger(__name__)
 
@@ -31,42 +36,30 @@ class HomeView(APIView):
     
     def get(self, request):
         return Response({
-            'message': 'Welcome to Zencare API',
+            'message': 'Welcome to the Zencare API',
+            'version': '1.0',
             'endpoints': {
-                'register': '/auth/register/',
-                'login': '/auth/login/',
-                'doctors': '/doctors/',
-                'token_refresh': '/auth/token/refresh/',
-                'profile': '/profile/',
-                'profile-details': '/profile-details/',
-                'complete-profile': '/complete-profile/',
-                'admin': {
-                    'doctors': '/admin/doctors/',
-                    'patients': '/admin/patients/',
-                    'lab-technicians': '/admin/lab-technicians/',
+                'auth': {
+                    'register': '/api/v1/auth/register/',
+                    'login': '/api/v1/auth/login/',
+                    'token_refresh': '/api/v1/auth/token/refresh/',
+                    'password_reset': '/api/v1/auth/password-reset/',  # New API endpoint for password reset
+                },
+                'users': {
+                    'profile': '/api/v1/profile/',
+                    'profile_details': '/api/v1/profile-details/',
+                    'complete_profile': '/api/v1/complete-profile/',
+                },
+                'doctors': {
+                    'list': '/api/v1/doctors/',
                 },
                 'appointments': {
-                    'list': '/appointment/',
-                    'create': '/appointment/create/',
-                    'detail': '/appointment/<id>/',
-                    'pending': '/appointment/pending/'  # For doctors to see pending appointments
-                },
-                'reports': {
-                    'list': '/appointment/reports/',
-                    'create': '/appointment/reports/create/',
-                    'detail': '/appointment/reports/<id>/'
-                },
-                'prescriptions': {
-                    'list': '/appointment/prescriptions/',
-                    'create': '/appointment/prescriptions/create/',
-                    'detail': '/appointment/prescriptions/<id>/',
-                    'lab_tests': '/appointment/lab-tests-required/'  # For lab technicians
-                },
-                'auth': {
-                    'password_reset': '/auth/password_reset/',
-                    'password_reset_confirm': '/auth/reset/<uidb64>/<token>/',
-                    'password_reset_done': '/auth/password_reset/done/',
-                    'password_reset_complete': '/auth/reset/done/'
+                    'list': '/api/v1/appointment/',
+                    'create': '/api/v1/appointment/create/',
+                    'detail': '/api/v1/appointment/<id>/',
+                    'cancel': '/api/v1/appointment/<id>/cancel/',
+                    'complete': '/api/v1/appointment/<id>/complete/',
+                    'reschedule': '/api/v1/appointment/<id>/reschedule/',
                 },
                 'notifications': {
                     'list': '/notifications/',
@@ -253,3 +246,48 @@ class ProfileDetailsView(generics.RetrieveAPIView):
             })
         
         return Response(serializer.data)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PasswordResetAPIView(APIView):
+    """
+    API View for password reset request - designed for frontend applications.
+    This view doesn't require CSRF token.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """
+        Initiates the password reset process by sending an email with reset instructions.
+        
+        Expects:
+        {
+            "email": "user@example.com"
+        }
+        """
+        try:
+            email = request.data.get('email')
+            if not email:
+                return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Use Django's built-in PasswordResetForm for email validation and sending
+            reset_form = PasswordResetForm(data={'email': email})
+            
+            if reset_form.is_valid():
+                # This will send the email if a valid user with that email exists
+                reset_form.save(
+                    request=request,
+                    use_https=request.is_secure(),
+                    from_email=None,  # Uses DEFAULT_FROM_EMAIL from settings
+                    email_template_name='registration/password_reset_email.html',
+                    subject_template_name='registration/password_reset_subject.txt',
+                )
+                return Response({'detail': 'Password reset email has been sent.'}, status=status.HTTP_200_OK)
+            else:
+                # Don't reveal if a user doesn't exist for security reasons
+                return Response({'detail': 'Password reset email has been sent if the email is registered.'}, 
+                               status=status.HTTP_200_OK)
+                
+        except Exception as e:
+            logger.error(f"Password reset error: {str(e)}")
+            return Response({'error': 'An error occurred during password reset'}, 
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)

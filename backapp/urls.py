@@ -8,7 +8,8 @@ from .views import (
     CustomTokenRefreshView,
     UserProfileView,
     ProfileCompletionView,
-    ProfileDetailsView
+    ProfileDetailsView,
+    PasswordResetAPIView
 )
 from .admin_views import (
     DoctorAdminViewSet,
@@ -29,6 +30,7 @@ urlpatterns = [
     path('auth/register/', UserRegistrationView.as_view(), name='register'),
     path('auth/login/', UserLoginView.as_view(), name='login'),
     path('auth/token/refresh/', CustomTokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/password-reset/', PasswordResetAPIView.as_view(), name='password-reset-api'),
     path('doctors/', DoctorListView.as_view(), name='doctor-list'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
     path('profile-details/', ProfileDetailsView.as_view(), name='profile-details'),
