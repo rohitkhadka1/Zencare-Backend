@@ -112,7 +112,10 @@ class MedicalReportSerializer(serializers.ModelSerializer):
         read_only_fields = ('created_at', 'updated_at', 'doctor_name', 
                            'patient_name', 'lab_technician_name', 
                            'report_type_display')
-    
+        # ✅ Add this to fix the error
+        extra_kwargs = {
+            'lab_technician': {'required': False}
+        }
     def get_doctor_name(self, obj):
         if obj.doctor:
             return f"Dr. {obj.doctor.get_full_name()}"
