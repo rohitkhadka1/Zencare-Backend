@@ -146,11 +146,11 @@ class MedicalReportSerializer(serializers.ModelSerializer):
         if request and hasattr(request, 'user') and request.user.user_type != 'lab_technician':
             raise serializers.ValidationError("Only lab technicians can upload medical reports")
         
-        # Ensure appointment exists and is completed
-        if 'appointment' in data and data['appointment'].status != 'completed':
-            raise serializers.ValidationError({
-                "appointment": "Reports can only be uploaded for completed appointments"
-            })
+        # # Ensure appointment exists and is completed
+        # if 'appointment' in data and data['appointment'].status != 'completed':
+        #     raise serializers.ValidationError({
+        #         "appointment": "Reports can only be uploaded for completed appointments"
+        #     })
         
         # If appointment is provided, automatically set patient and doctor from it
         if 'appointment' in data:
