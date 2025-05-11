@@ -17,8 +17,12 @@ class NotificationViewSet(viewsets.ModelViewSet):
     pagination_class = NotificationPagination
 
     def get_queryset(self):
-        return Notification.objects.filter(recipient=self.request.user)
-
+        print(f"User attempting to access notifications: {self.request.user}")
+        queryset = Notification.objects.filter(recipient=self.request.user)
+        print(f"Found {queryset.count()} notifications")
+        return queryset
+    
+    
     @action(detail=True, methods=['post'])
     def mark_as_read(self, request, pk=None):
         notification = self.get_object()

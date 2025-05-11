@@ -36,6 +36,7 @@ urlpatterns = [
     path('api/v1/auth/password_reset/done/', csrf_exempt(auth_views.PasswordResetDoneView.as_view()), name='password_reset_done'),
     path('api/v1/auth/reset/<uidb64>/<token>/', csrf_exempt(auth_views.PasswordResetConfirmView.as_view()), name='password_reset_confirm'),
     path('api/v1/auth/reset/done/', csrf_exempt(auth_views.PasswordResetCompleteView.as_view()), name='password_reset_complete'),
+    path('api/v1/', include('notifications.urls')),
 ] 
 
 # Serve media files in all environments

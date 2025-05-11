@@ -496,8 +496,9 @@ class PrescriptionListView(generics.ListAPIView):
         elif user.user_type == 'patient':
             return Prescription.objects.filter(patient=user)
         elif user.user_type == 'lab_technician':
+            return Prescription.objects.all()
             # Lab technicians see all prescriptions that require lab tests
-            return Prescription.objects.filter(lab_tests_required=True)
+            # return Prescription.objects.filter(lab_tests_required=True)
         elif user.is_superuser or user.is_staff:
             return Prescription.objects.all()
             
