@@ -12,6 +12,7 @@ from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.filters import SearchFilter, OrderingFilter
+from notifications.services import NotificationService  
 
 User = get_user_model()
 
@@ -45,6 +46,8 @@ class AppointmentCreateView(generics.CreateAPIView):
             # Map symptoms field
             if 'description' in request.data:
                 mapped_data['symptoms'] = request.data.get('description')
+
+            
         
         elif 'doctor' in request.data:
             # Format 2: Direct field names format from api.js
@@ -70,6 +73,7 @@ class AppointmentCreateView(generics.CreateAPIView):
         try:
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
+            NotificationService.notify_appointment_created(serializer.instance)
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
