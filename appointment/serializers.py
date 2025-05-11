@@ -114,40 +114,67 @@ class MedicalReportSerializer(serializers.ModelSerializer):
                            'report_type_display')
     
     def get_doctor_name(self, obj):
-        return f"Dr. {obj.doctor.get_full_name()}"
+        if obj.doctor:
+            return f"Dr. {obj.doctor.get_full_name()}"
+        return None
     
     def get_patient_name(self, obj):
-        return obj.patient.get_full_name()
+        if obj.patient:
+            return obj.patient.get_full_name()
+        return None
     
     def get_lab_technician_name(self, obj):
-        return obj.lab_technician.get_full_name()
+        if obj.lab_technician:
+            return obj.lab_technician.get_full_name()
+        return None
     
     def get_report_type_display(self, obj):
         return obj.get_report_type_display()
     
     def validate(self, data):
+        # Get the current user from the request context
+        request = self.context.get('request')
+        
+        # Set lab_technician to the current user if it's not provided
+        if 'lab_technician' not in data and request and hasattr(request, 'user'):
+            data['lab_technician'] = request.user
+        
         # Ensure the lab technician is actually a lab technician
-        if self.context['request'].user.user_type != 'lab_technician':
+        if request and hasattr(request, 'user') and request.user.user_type != 'lab_technician':
             raise serializers.ValidationError("Only lab technicians can upload medical reports")
         
         # Ensure appointment exists and is completed
-        if data['appointment'].status != 'completed':
+        if 'appointment' in data and data['appointment'].status != 'completed':
             raise serializers.ValidationError({
                 "appointment": "Reports can only be uploaded for completed appointments"
             })
         
-        # Ensure patient and doctor match the appointment
-        if data['patient'] != data['appointment'].patient:
+        # If appointment is provided, automatically set patient and doctor from it
+        if 'appointment' in data:
+            data['patient'] = data['appointment'].patient
+            data['doctor'] = data['appointment'].doctor
+        
+        # Ensure patient and doctor match the appointment if all are provided
+        if 'patient' in data and 'appointment' in data and data['patient'] != data['appointment'].patient:
             raise serializers.ValidationError({
                 "patient": "Patient does not match the appointment"
             })
         
-        if data['doctor'] != data['appointment'].doctor:
+        if 'doctor' in data and 'appointment' in data and data['doctor'] != data['appointment'].doctor:
             raise serializers.ValidationError({
                 "doctor": "Doctor does not match the appointment"
             })
         
-        return data 
+        return data
+    
+    def create(self, validated_data):
+        # Ensure lab_technician is set
+        if 'lab_technician' not in validated_data:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user'):
+                validated_data['lab_technician'] = request.user
+        
+        return super().create(validated_data)
 
 class PrescriptionSerializer(serializers.ModelSerializer):
     # Legacy field support for backward compatibility
@@ -215,4 +242,4 @@ class PrescriptionUpdateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         # All validations are now optional
-        return data 
+        return data
